@@ -6,7 +6,6 @@ from typing import Dict, Iterable, List, Optional, Tuple, Union
 import numpy as np
 import torch
 from torch import Tensor
-from torch.cuda.amp import autocast
 from tqdm.autonotebook import trange
 
 from lunar_encoder.config import EncoderConfig
@@ -110,8 +109,11 @@ class PassageEncoder(BaseEncoder):
         show_progress_bar: bool = False,
         as_tensor: bool = False,
         normalize_embeddings: bool = False,
-        use16: bool = True,
+        use16: Optional[bool] = None,
     ) -> Union[np.ndarray, Tensor]:
+
+        if use16 is None:
+            use16 = self.config.use16
 
         self.eval()
         if show_progress_bar is None:
@@ -123,18 +125,24 @@ class PassageEncoder(BaseEncoder):
             input_was_string = True
 
         all_embeddings = []
+        length_sorted_idx = np.argsort([-len(sen) for sen in input_instances])
+        sentences_sorted = [input_instances[idx] for idx in length_sorted_idx]
         for start_index in trange(
             0,
-            len(input_instances),
+            len(sentences_sorted),
             batch_size,
             desc="Batches",
             disable=not show_progress_bar,
         ):
-            sentences_batch = input_instances[start_index : start_index + batch_size]
+            sentences_batch = sentences_sorted[start_index : start_index + batch_size]
             features = self._transformer.tokenize(sentences_batch)
-            features = dict_batch_to_device(features, self._config.device)
+            features = dict_batch_to_device(features, self._device)
 
-            with autocast(enabled=use16):
+            with torch.autocast(
+                device_type=self._device,
+                enabled=use16,
+                dtype=torch.bfloat16 if self._device == "cpu" else torch.float16,
+            ):
                 with torch.no_grad():
                     out_features = self.forward(features)
                     embeddings = out_features[
@@ -144,11 +152,12 @@ class PassageEncoder(BaseEncoder):
             if normalize_embeddings:
                 embeddings = torch.nn.functional.normalize(embeddings, p=2, dim=1)
 
-            if as_tensor:
+            if not as_tensor:
                 embeddings = embeddings.cpu()
 
             all_embeddings.extend(embeddings)
 
+        all_embeddings = [all_embeddings[idx] for idx in np.argsort(length_sorted_idx)]
         all_embeddings = torch.stack(all_embeddings)
 
         if not as_tensor:

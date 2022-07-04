@@ -11,7 +11,7 @@ class BaseEncoder(ABC, nn.Module):
         super(BaseEncoder, self).__init__()
 
         self._config = config if config is not None else EncoderConfig()
-        self._device = device
+        self.device = device
 
     @property
     def config(self):
@@ -38,7 +38,7 @@ class BaseEncoder(ABC, nn.Module):
         show_progress_bar: bool = None,
         as_tensor: bool = False,
         normalize_embeddings: bool = False,
-        use16: bool = True,
+        use16: Optional[bool] = None,
     ) -> Union[np.ndarray, Tensor]:
         pass
 

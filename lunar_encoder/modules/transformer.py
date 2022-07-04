@@ -63,11 +63,6 @@ class Transformer(nn.Module):
             model_name_or_path, config=config, cache_dir=cache_dir
         )
 
-    def __repr__(self):
-        return "Transformer({}) with Transformer model: {} ".format(
-            self.get_config_dict(), self._auto_model.__class__.__name__
-        )
-
     def forward(self, features: Dict[str, Tensor]):
         trans_features = {
             "input_ids": features["input_ids"],
@@ -125,10 +120,6 @@ class Transformer(nn.Module):
 
         # strip
         to_tokenize = [[str(s).strip() for s in col] for col in to_tokenize]
-
-        # Lowercase
-        if self._do_lower_case:
-            to_tokenize = [[s.lower() for s in col] for col in to_tokenize]
 
         output.update(
             self._tokenizer(

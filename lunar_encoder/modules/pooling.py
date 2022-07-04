@@ -68,7 +68,7 @@ class MeanPooling(PoolingModel):
 
     def forward(self, input_features: Tensor, input_attention: Optional[Tensor] = None):
         input_mask_expanded = (
-            input_attention.unsqueeze(-1).expand(input_features.size()).float()
+            input_attention.unsqueeze(-1).expand(input_features.size())
         )
         sum_embeddings = torch.sum(input_features * input_mask_expanded, 1)
         sum_mask = input_mask_expanded.sum(1)
@@ -87,7 +87,7 @@ class MaxPooling(PoolingModel):
 
     def forward(self, input_features: Tensor, input_attention: Optional[Tensor] = None):
         input_mask_expanded = (
-            input_attention.unsqueeze(-1).expand(input_features.size()).float()
+            input_attention.unsqueeze(-1).expand(input_features.size())
         )
         input_features[input_mask_expanded == 0] = -1e9
         pooled_output = torch.max(input_features, 1)[0]
@@ -149,7 +149,7 @@ class Pooling(nn.Module):
         return self._pooled_embedding_name
 
     def __repr__(self):
-        return "Pooling({})".format(self.get_config_dict())
+        return "Pooling({})".format(self.pooling_method)
 
     def forward(self, features: Dict[str, Tensor]):
         token_embeddings = features["token_embeddings"]
