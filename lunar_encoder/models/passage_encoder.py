@@ -1,3 +1,4 @@
+import dataclasses
 import json
 import logging
 import os
@@ -66,7 +67,7 @@ class PassageEncoder(BaseEncoder):
                 pooled_embedding_name=self._config.pooled_embedding_name,
             )
 
-        self.to(self.device)
+        self.to(self._device)
 
     @property
     def transformer(self):
@@ -108,7 +109,7 @@ class PassageEncoder(BaseEncoder):
         batch_size: int = 32,
         show_progress_bar: bool = False,
         as_tensor: bool = False,
-        normalize_embeddings: bool = False,
+        normalize_embeddings: bool = True,
         use16: Optional[bool] = None,
     ) -> Union[np.ndarray, Tensor]:
 
@@ -179,21 +180,20 @@ class PassageEncoder(BaseEncoder):
         os.makedirs(model_path, exist_ok=True)
 
         logger.info("Saving model to {}".format(model_path))
-        self._config.update(
-            {"base_transformer_name": os.path.join(model_path, "transformer")}
-        )
-        with open(os.path.join(model_path, "passage_encoder_config.json"), "w") as fOut:
-            json.dump(self._config, fOut, indent=2)
+        self._config.base_transformer_name = model_path
 
-        self._transformer.save(os.path.join(model_path, "transformer"))
+        with open(os.path.join(model_path, "passage_encoder_config.json"), "w") as fOut:
+            json.dump(dataclasses.asdict(self._config), fOut, indent=2)
+
+        self._transformer.save(model_path)
         save_module(
             self._pooler,
-            os.path.join(model_path, "pooler", "passage_encoder_pooler.pt"),
+            os.path.join(model_path, "passage_encoder_pooler.pt"),
         )
         if self._dense is not None:
             save_module(
                 self._dense,
-                os.path.join(model_path, "dense", "passage_encoder_dense.pt"),
+                os.path.join(model_path, "passage_encoder_dense.pt"),
             )
 
     @staticmethod
@@ -203,16 +203,13 @@ class PassageEncoder(BaseEncoder):
 
         logger.info("Loading model from {}".format(model_path))
         with open(os.path.join(model_path, "passage_encoder_config.json")) as fIn:
-            config = json.load(fIn)
+            config_dict = json.load(fIn)
+        config = EncoderConfig()
+        config.__dict__.update(config_dict)
 
-        pooler = load_module(
-            os.path.join(model_path, "pooler", "passage_encoder_pooler.pt")
-        )
+        pooler = load_module(os.path.join(model_path, "passage_encoder_pooler.pt"))
         dense = None
-        if os.path.isfile(
-            os.path.join(model_path, "dense", "passage_encoder_dense.pt")
-        ):
-            dense = load_module(
-                os.path.join(model_path, "dense", "passage_encoder_dense.pt")
-            )
+        if os.path.isfile(os.path.join(model_path, "passage_encoder_dense.pt")):
+            dense = load_module(os.path.join(model_path, "passage_encoder_dense.pt"))
+
         return PassageEncoder(config=config, pooling=pooler, dense=dense)

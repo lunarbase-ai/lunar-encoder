@@ -24,7 +24,6 @@ class BaseEncoder(ABC, nn.Module):
     @device.setter
     def device(self, value: str):
         self._device = value
-        self.to(self._device)
 
     @abstractmethod
     def forward(self, features: Dict[str, Tensor]):

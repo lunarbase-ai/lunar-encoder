@@ -14,6 +14,7 @@ from typing import List, Iterator, Tuple, Union
 from torch import nn, Tensor
 import logging
 import torch
+import os
 
 from torch.optim.lr_scheduler import LambdaLR
 
@@ -118,11 +119,16 @@ def text_object_length(text: Union[List, List[List]]):
 
 
 def save_module(module: nn.Module, module_path: str):
-    module_scripted = torch.jit.script(module)  # Export to TorchScript
-    module_scripted.save(module_path)  # Save
+    # module_scripted = torch.jit.script(module)  # Export to TorchScript
+    # module_scripted.save(module_path)  # Save
+    dir_name = os.path.dirname((os.path.abspath(module_path)))
+    os.makedirs(dir_name, exist_ok=True)
+
+    torch.save(module, module_path)
 
 
 def load_module(module_path: str):
-    module = torch.jit.load(module_path)
+    # module = torch.jit.load(module_path)
+    module = torch.load(module_path)
     module.eval()
     return module

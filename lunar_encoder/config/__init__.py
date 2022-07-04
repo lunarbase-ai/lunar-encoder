@@ -1,4 +1,5 @@
-from dataclasses import dataclass, field
+import json
+from dataclasses import dataclass, field, fields
 from typing import List, Dict, Optional
 
 

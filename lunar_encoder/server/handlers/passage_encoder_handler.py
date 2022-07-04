@@ -34,11 +34,12 @@ class PassageEncoderHandler(BaseHandler):
             else "cpu"
         )
 
-        if not os.path.isfile(model_dir):
-            raise RuntimeError("{} : no such directory!".format(model_dir))
+        if not os.path.isdir(model_dir):
+            raise FileNotFoundError("{} : no such directory!".format(model_dir))
 
         self.model = PassageEncoder.load(model_dir)
-        self.model.device(self.device)
+        self.model.device = self.device
+        self.model.to(self.device)
         self.model.eval()
         self.initialized = True
 
