@@ -15,4 +15,4 @@ class EncoderConfig:
     dense_output_dim: Optional[int] = field(default=None)
     dense_activation: str = field(default="tanh")
     pooled_embedding_name: str = field(default="pooled_embedding")
-    pooled_attention_params: Dict = field(default={})
+    pooled_attention_params: Dict = field(default=dict)
