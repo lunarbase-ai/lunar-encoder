@@ -114,7 +114,7 @@ class Pooling(nn.Module):
             self,
             pooling_method: Union[PoolingMethod, str] = PoolingMethod.CLS,
             pooled_embedding_name: str = "pooled_embedding",
-            **attention_pooling_params: Optional[Any]
+            **attention_pooling_params: Any
     ):
         super(Pooling, self).__init__()
 

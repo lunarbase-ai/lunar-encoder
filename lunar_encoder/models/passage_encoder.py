@@ -46,7 +46,6 @@ class PassageEncoder(BaseEncoder):
         self._pooler = pooling
         if self._pooler is None:
             self._pooler = Pooling(
-                word_embedding_dimension=self._transformer.get_word_embedding_dimension(),
                 pooling_method=self._config.pooling_method,
                 pooled_embedding_name=self._config.pooled_embedding_name,
                 **self._config.pooled_attention_params
