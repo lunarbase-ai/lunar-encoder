@@ -7,14 +7,24 @@ from lunar_encoder.config import EncoderConfig
 
 
 class BaseEncoder(ABC, nn.Module):
-    def __init__(self, config: Optional[EncoderConfig] = None):
+    def __init__(self, config: Optional[EncoderConfig] = None, device: str = "cpu"):
         super(BaseEncoder, self).__init__()
 
         self._config = config if config is not None else EncoderConfig()
+        self._device = device
 
     @property
     def config(self):
         return self._config
+
+    @property
+    def device(self):
+        return self._device
+
+    @device.setter
+    def device(self, value: str):
+        self._device = value
+        self.to(self._device)
 
     @abstractmethod
     def forward(self, features: Dict[str, Tensor]):
@@ -30,4 +40,13 @@ class BaseEncoder(ABC, nn.Module):
         normalize_embeddings: bool = False,
         use16: bool = True,
     ) -> Union[np.ndarray, Tensor]:
+        pass
+
+    @abstractmethod
+    def save(self, model_path: str):
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def load(model_path: str):
         pass

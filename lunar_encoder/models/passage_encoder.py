@@ -1,5 +1,6 @@
+import json
 import logging
-from abc import ABC
+import os
 from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
@@ -13,37 +14,50 @@ from lunar_encoder.models.base_encoder import BaseEncoder
 from lunar_encoder.modules.dense import Dense
 from lunar_encoder.modules.pooling import Pooling
 from lunar_encoder.modules.transformer import Transformer
-from lunar_encoder.utils import dict_batch_to_device, setup_logger
+from lunar_encoder.utils import (
+    dict_batch_to_device,
+    load_module,
+    save_module,
+    setup_logger,
+)
 
 logger = logging.getLogger()
 setup_logger(logger)
 
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 
 class PassageEncoder(BaseEncoder):
-    def __init__(self, config: Optional[EncoderConfig] = None):
-        super(PassageEncoder, self).__init__(config)
+    def __init__(
+        self,
+        config: Optional[EncoderConfig] = None,
+        pooling: Optional[Pooling] = None,
+        dense: Optional[Dense] = None,
+        device: str = "cpu",
+    ):
+        super(PassageEncoder, self).__init__(config, device)
 
         self._transformer = Transformer(
             model_name_or_path=self._config.base_transformer_name,
-            max_seq_length=self._config.max_seq_len,
+            max_seq_length=self._config.max_seq_length,
             model_args=self._config.base_transformer_args,
-            tokenizer_name_or_path=self._config.base_transformer_name,
             tokenizer_args=self._config.base_tokenizer_args,
-            do_lower_case=self._config.base_tokenizer_lowercase,
             cache_dir=self._config.cache_folder,
-        ).to(self._config.device)
+        )
 
-        self._pooler = Pooling(
-            word_embedding_dimension=self._transformer.get_word_embedding_dimension(),
-            pooling_method=self._config.pooling_method,
-            pooled_embedding_name=self._config.pooled_embedding_name,
-            **self._config.pooled_attention_params
-        ).to(self._config.device)
+        self._pooler = pooling
+        if self._pooler is None:
+            self._pooler = Pooling(
+                word_embedding_dimension=self._transformer.get_word_embedding_dimension(),
+                pooling_method=self._config.pooling_method,
+                pooled_embedding_name=self._config.pooled_embedding_name,
+                **self._config.pooled_attention_params
+            )
 
-        self._dense = None
-        if self._config.add_dense:
+        self._dense = dense
+        if (
+            self._dense is None
+            and self._config.dense_hidden_dims is not None
+            and self._config.dense_hidden_dims > 0
+        ):
             self._dense = Dense(
                 input_dim=self._transformer.get_word_embedding_dimension(),
                 output_dim=self._config.dense_output_dim
@@ -52,7 +66,9 @@ class PassageEncoder(BaseEncoder):
                 hidden_dims=self._config.dense_hidden_dims,
                 activation=self._config.dense_activation,
                 pooled_embedding_name=self._config.pooled_embedding_name,
-            ).to(self._config.device)
+            )
+
+        self.to(self.device)
 
     @property
     def transformer(self):
@@ -65,6 +81,18 @@ class PassageEncoder(BaseEncoder):
     @property
     def dense(self):
         return self._dense
+
+    @transformer.setter
+    def transformer(self, value: Transformer):
+        self._transformer = value
+
+    @pooler.setter
+    def pooler(self, value: Pooling):
+        self._pooler = value
+
+    @dense.setter
+    def dense(self, value: Dense):
+        self._dense = value
 
     def get_word_embedding_dimension(self) -> int:
         return self._transformer.get_word_embedding_dimension()
@@ -80,7 +108,7 @@ class PassageEncoder(BaseEncoder):
         self,
         input_instances: Union[str, Iterable[str]],
         batch_size: int = 32,
-        show_progress_bar: bool = None,
+        show_progress_bar: bool = False,
         as_tensor: bool = False,
         normalize_embeddings: bool = False,
         use16: bool = True,
@@ -94,8 +122,6 @@ class PassageEncoder(BaseEncoder):
         if isinstance(input_instances, str) or not hasattr(input_instances, "__len__"):
             input_instances = [input_instances]
             input_was_string = True
-
-        self.to(self._config.device)
 
         all_embeddings = []
         for start_index in trange(
@@ -136,3 +162,49 @@ class PassageEncoder(BaseEncoder):
 
     def tokenize(self, texts: Union[List[str], List[Dict], List[Tuple[str, str]]]):
         return self._transformer.tokenize(texts)
+
+    def save(self, model_path: str):
+
+        if model_path is None:
+            return
+
+        os.makedirs(model_path, exist_ok=True)
+
+        logger.info("Saving model to {}".format(model_path))
+        self._config.update(
+            {"base_transformer_name": os.path.join(model_path, "transformer")}
+        )
+        with open(os.path.join(model_path, "passage_encoder_config.json"), "w") as fOut:
+            json.dump(self._config, fOut, indent=2)
+
+        self._transformer.save(os.path.join(model_path, "transformer"))
+        save_module(
+            self._pooler,
+            os.path.join(model_path, "pooler", "passage_encoder_pooler.pt"),
+        )
+        if self._dense is not None:
+            save_module(
+                self._dense,
+                os.path.join(model_path, "dense", "passage_encoder_dense.pt"),
+            )
+
+    @staticmethod
+    def load(model_path: str):
+        if not os.path.isdir(model_path):
+            raise FileNotFoundError("{}: no such directory!".format(model_path))
+
+        logger.info("Loading model from {}".format(model_path))
+        with open(os.path.join(model_path, "passage_encoder_config.json")) as fIn:
+            config = json.load(fIn)
+
+        pooler = load_module(
+            os.path.join(model_path, "pooler", "passage_encoder_pooler.pt")
+        )
+        dense = None
+        if os.path.isfile(
+            os.path.join(model_path, "dense", "passage_encoder_dense.pt")
+        ):
+            dense = load_module(
+                os.path.join(model_path, "dense", "passage_encoder_dense.pt")
+            )
+        return PassageEncoder(config=config, pooling=pooler, dense=dense)

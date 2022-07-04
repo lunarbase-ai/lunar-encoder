@@ -1,10 +1,10 @@
 """
 Inspired by https://github.com/UKPLab/sentence-transformers/blob/master/sentence_transformers/models/Transformer.py
 """
+from typing import Dict, List, Optional, Tuple, Union
 
-from torch import nn, Tensor
-from transformers import AutoModel, AutoTokenizer, AutoConfig, T5Config
-from typing import List, Dict, Optional, Union, Tuple
+from torch import Tensor, nn
+from transformers import AutoConfig, AutoModel, AutoTokenizer, T5Config
 
 
 class Transformer(nn.Module):
@@ -16,8 +16,6 @@ class Transformer(nn.Module):
         max_seq_length: Optional[int] = None,
         model_args: Optional[Dict] = None,
         tokenizer_args: Optional[Dict] = None,
-        do_lower_case: bool = False,
-        tokenizer_name_or_path: str = None,
         cache_dir: Optional[str] = None,
     ):
         super(Transformer, self).__init__()
@@ -25,19 +23,13 @@ class Transformer(nn.Module):
         model_args = model_args if model_args is not None else {}
         tokenizer_args = tokenizer_args if tokenizer_args is not None else {}
 
-        self._do_lower_case = do_lower_case
-
         config = AutoConfig.from_pretrained(
             model_name_or_path, **model_args, cache_dir=cache_dir
         )
         self._load_model(model_name_or_path, config, cache_dir)
 
         self._tokenizer = AutoTokenizer.from_pretrained(
-            tokenizer_name_or_path
-            if tokenizer_name_or_path is not None
-            else model_name_or_path,
-            cache_dir=cache_dir,
-            **tokenizer_args
+            model_name_or_path, cache_dir=cache_dir, **tokenizer_args
         )
 
         if max_seq_length is None:
@@ -52,9 +44,6 @@ class Transformer(nn.Module):
                 )
 
         self._max_seq_length = max_seq_length
-
-        if tokenizer_name_or_path is not None:
-            self._auto_model.config.tokenizer_class = self._tokenizer.__class__.__name__
 
     def _load_model(self, model_name_or_path, config, cache_dir):
         """Loads the transformer model"""
@@ -152,6 +141,22 @@ class Transformer(nn.Module):
         )
         return output
 
+    def save(self, model_path: str):
+
+        self.auto_model.save_pretrained(model_path)
+        self.tokenizer.save_pretrained(model_path)
+
+        # with open(os.path.join(model_path, "transformer_config.json"), "w") as fOut:
+        #     json.dump({"max_seq_length": self._max_seq_length}, fOut, indent=2)
+
+    @staticmethod
+    def load(model_path: str):
+        # with open(os.path.join(model_path, "transformer_config.json")) as fIn:
+        #     max_seq_length = json.load(fIn).get("max_seq_length", None)
+
+        # Max_seq_length needs to be manually configured
+        return Transformer(model_name_or_path=model_path)
+
     @property
     def auto_model(self):
         return self._auto_model
@@ -159,3 +164,11 @@ class Transformer(nn.Module):
     @property
     def tokenizer(self):
         return self._tokenizer
+
+    @property
+    def max_seq_length(self):
+        return self._max_seq_length
+
+    @max_seq_length.setter
+    def max_seq_length(self, value: int):
+        self._max_seq_length = value

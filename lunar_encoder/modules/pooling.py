@@ -28,11 +28,11 @@ class PoolingModel(ABC, nn.Module):
 
 class AttentionPooling(PoolingModel):
     def __init__(
-        self,
-        embedding_dim: int,
-        num_heads: int = 2,
-        num_seeds: int = 1,
-        dropout: float = 0.0,
+            self,
+            embedding_dim: int,
+            num_heads: int = 2,
+            num_seeds: int = 1,
+            dropout: float = 0.0,
     ):
         super(AttentionPooling, self).__init__()
 
@@ -73,7 +73,7 @@ class MeanPooling(PoolingModel):
         sum_embeddings = torch.sum(input_features * input_mask_expanded, 1)
         sum_mask = input_mask_expanded.sum(1)
         sum_mask = torch.clamp(sum_mask, min=1e-9)
-        if self._with_sqrt == PoolingMethod.MEAN:
+        if self._with_sqrt:
             pooled_output = sum_embeddings / torch.sqrt(sum_mask)
         else:
             pooled_output = sum_embeddings / sum_mask
@@ -111,10 +111,10 @@ class Pooling(nn.Module):
     """
 
     def __init__(
-        self,
-        pooling_method: Union[PoolingMethod, str] = PoolingMethod.CLS,
-        pooled_embedding_name: str = "pooled_embedding",
-        **attention_pooling_params: Optional[Any]
+            self,
+            pooling_method: Union[PoolingMethod, str] = PoolingMethod.CLS,
+            pooled_embedding_name: str = "pooled_embedding",
+            **attention_pooling_params: Optional[Any]
     ):
         super(Pooling, self).__init__()
 

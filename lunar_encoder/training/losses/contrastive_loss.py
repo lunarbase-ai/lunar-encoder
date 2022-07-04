@@ -74,7 +74,7 @@ class ContrastiveLoss(BaseLoss):
         as_tensor: bool = False,
         show_dot: bool = False,
     ):
-        # TODO: needs rethinking...
+        # TODO: Loss evaluation needs rethinking...
 
         num_texts = len(evaluation_data[0][0])
         texts = [[] for _ in range(num_texts)]

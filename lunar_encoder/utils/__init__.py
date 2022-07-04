@@ -11,8 +11,9 @@ This module defines utility function for creating and querying indexes.
 """
 import pickle
 from typing import List, Iterator, Tuple, Union
-from torch import Tensor
+from torch import nn, Tensor
 import logging
+import torch
 
 from torch.optim.lr_scheduler import LambdaLR
 
@@ -114,3 +115,14 @@ def text_object_length(text: Union[List, List[List]]):
         return len(text)
     else:
         return sum([len(t) for t in text])  # Sum of length of individual strings
+
+
+def save_module(module: nn.Module, module_path: str):
+    module_scripted = torch.jit.script(module)  # Export to TorchScript
+    module_scripted.save(module_path)  # Save
+
+
+def load_module(module_path: str):
+    module = torch.jit.load(module_path)
+    module.eval()
+    return module
