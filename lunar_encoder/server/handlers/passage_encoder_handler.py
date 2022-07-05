@@ -44,12 +44,13 @@ class PassageEncoderHandler(BaseHandler):
         inputs = []
         logger.info("Received raw data {}".format(requests))
         for idx, data in enumerate(requests):
-            input_text = data.get("data")
-            if input_text is None:
-                input_text = data.get("body")
-            if isinstance(input_text, (bytes, bytearray)):
-                input_text = input_text.decode("utf-8")
-            inputs.append(input_text)
+            input_texts = data.get("data")
+            if input_texts is None:
+                input_texts = data.get("body")
+            for it in input_texts:
+                if isinstance(it, (bytes, bytearray)):
+                    it = it.decode("utf-8")
+                inputs.append(it)
 
         return inputs
 
@@ -58,4 +59,4 @@ class PassageEncoderHandler(BaseHandler):
 
     def postprocess(self, data):
         embeddings = data.tolist()
-        return embeddings
+        return [embeddings]
