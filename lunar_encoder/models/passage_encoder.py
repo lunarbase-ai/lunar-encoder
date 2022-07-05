@@ -31,9 +31,8 @@ class PassageEncoder(BaseEncoder):
         config: Optional[EncoderConfig] = None,
         pooling: Optional[Pooling] = None,
         dense: Optional[Dense] = None,
-        device: str = "cpu",
     ):
-        super(PassageEncoder, self).__init__(config, device)
+        super(PassageEncoder, self).__init__(config)
 
         self._transformer = Transformer(
             model_name_or_path=self._config.base_transformer_name,
@@ -66,8 +65,7 @@ class PassageEncoder(BaseEncoder):
                 activation=self._config.dense_activation,
                 pooled_embedding_name=self._config.pooled_embedding_name,
             )
-
-        self.to(self._device)
+        self.to(self.config.device)
 
     @property
     def transformer(self):
@@ -137,12 +135,11 @@ class PassageEncoder(BaseEncoder):
         ):
             sentences_batch = sentences_sorted[start_index : start_index + batch_size]
             features = self._transformer.tokenize(sentences_batch)
-            features = dict_batch_to_device(features, self._device)
-
+            features = dict_batch_to_device(features, self.config.device)
             with torch.autocast(
-                device_type=self._device,
+                device_type=self.config.device,
                 enabled=use16,
-                dtype=torch.bfloat16 if self._device == "cpu" else torch.float16,
+                dtype=torch.bfloat16 if self.config.device == "cpu" else torch.float16,
             ):
                 with torch.no_grad():
                     out_features = self.forward(features)

@@ -5,9 +5,7 @@ Unauthorized copying of this file, via any medium is strictly prohibited.
 
 Notes
 -----
-This module defines utility function for creating and querying indexes.
 
-[1] https://github.com/spotify/annoy
 """
 import pickle
 from typing import List, Iterator, Tuple, Union

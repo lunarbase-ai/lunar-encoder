@@ -1,9 +1,8 @@
-from typing import Union, Iterable, Any
+import logging
+import os
+from typing import Any, Iterable, Union
 
 from ts.torch_handler.base_handler import BaseHandler
-import torch
-import os
-import logging
 
 from lunar_encoder.models.passage_encoder import PassageEncoder
 from lunar_encoder.utils import setup_logger
@@ -28,18 +27,11 @@ class PassageEncoderHandler(BaseHandler):
 
         properties = context.system_properties
         model_dir = properties.get("model_dir")
-        self.device = torch.device(
-            "cuda:" + str(properties.get("gpu_id"))
-            if torch.cuda.is_available()
-            else "cpu"
-        )
 
         if not os.path.isdir(model_dir):
             raise FileNotFoundError("{} : no such directory!".format(model_dir))
 
         self.model = PassageEncoder.load(model_dir)
-        self.model.device = self.device
-        self.model.to(self.device)
         self.model.eval()
         self.initialized = True
 
@@ -48,11 +40,22 @@ class PassageEncoderHandler(BaseHandler):
     ):
         return self.model.encode(input_instances=input_instances, **encoding_kwargs)
 
-    def preprocess(self, data):
-        return data
+    def preprocess(self, requests):
+        inputs = []
+        logger.info("Received raw data {}".format(requests))
+        for idx, data in enumerate(requests):
+            input_text = data.get("data")
+            if input_text is None:
+                input_text = data.get("body")
+            if isinstance(input_text, (bytes, bytearray)):
+                input_text = input_text.decode("utf-8")
+            inputs.append(input_text)
+
+        return inputs
 
     def inference(self, data, *args, **kwargs):
         return self.encode(data, **kwargs)
 
     def postprocess(self, data):
-        return data
+        embeddings = data.tolist()
+        return embeddings

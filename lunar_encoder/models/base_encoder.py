@@ -7,23 +7,14 @@ from lunar_encoder.config import EncoderConfig
 
 
 class BaseEncoder(ABC, nn.Module):
-    def __init__(self, config: Optional[EncoderConfig] = None, device: str = "cpu"):
+    def __init__(self, config: Optional[EncoderConfig] = None):
         super(BaseEncoder, self).__init__()
 
         self._config = config if config is not None else EncoderConfig()
-        self.device = device
 
     @property
     def config(self):
         return self._config
-
-    @property
-    def device(self):
-        return self._device
-
-    @device.setter
-    def device(self, value: str):
-        self._device = value
 
     @abstractmethod
     def forward(self, features: Dict[str, Tensor]):

@@ -18,3 +18,4 @@ class EncoderConfig:
     dense_activation: str = field(default="tanh")
     pooled_embedding_name: str = field(default="pooled_embedding")
     pooled_attention_params: Dict = field(default_factory=dict)
+    device: str = field(default="cpu")
