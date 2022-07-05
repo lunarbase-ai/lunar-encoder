@@ -9,7 +9,7 @@ import torch
 from torch import Tensor
 from tqdm.autonotebook import trange
 
-from lunar_encoder.config import EncoderConfig
+from lunar_encoder.models.config import EncoderConfig
 from lunar_encoder.models.base_encoder import BaseEncoder
 from lunar_encoder.modules.dense import Dense
 from lunar_encoder.modules.pooling import Pooling

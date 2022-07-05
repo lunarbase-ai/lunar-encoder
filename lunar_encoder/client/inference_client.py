@@ -79,6 +79,6 @@ if __name__ == "__main__":
         "The prime minister updated on the latest UK military equipment, including 10 self-propelled artillery systems and loitering munitions, which would be arriving in the coming days and weeks.",
         "The prime minister said the world was behind Ukraine, and he believed President Zelenskiy’s military could retake territory recently captured by Putin’s forces.",
     ]
-    client = InferenceClient(model_name="lunarenc")
+    client = InferenceClient(model_name="lunarenc", port=8443)
     response = client.predict(input_data=texts)
     print(response)

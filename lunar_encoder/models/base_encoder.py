@@ -3,7 +3,7 @@ from typing import Optional, Dict, Union, Iterable
 import numpy as np
 from torch import nn, Tensor
 
-from lunar_encoder.config import EncoderConfig
+from lunar_encoder.models.config import EncoderConfig
 
 
 class BaseEncoder(ABC, nn.Module):
