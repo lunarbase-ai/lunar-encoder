@@ -11,9 +11,9 @@ from tqdm.autonotebook import trange
 
 from lunar_encoder.models.config import EncoderConfig
 from lunar_encoder.models.base_encoder import BaseEncoder
-from lunar_encoder.modules.dense import Dense
-from lunar_encoder.modules.pooling import Pooling
-from lunar_encoder.modules.transformer import Transformer
+from lunar_encoder.models.modules.dense import Dense
+from lunar_encoder.models.modules.pooling import Pooling
+from lunar_encoder.models.modules.transformer import Transformer
 from lunar_encoder.utils import (
     dict_batch_to_device,
     load_module,

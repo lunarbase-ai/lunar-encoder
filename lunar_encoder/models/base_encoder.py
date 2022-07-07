@@ -16,6 +16,10 @@ class BaseEncoder(ABC, nn.Module):
     def config(self):
         return self._config
 
+    @property
+    def device(self):
+        return self._config.device
+
     @abstractmethod
     def forward(self, features: Dict[str, Tensor]):
         pass

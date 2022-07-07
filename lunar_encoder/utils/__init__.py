@@ -1,20 +1,18 @@
 """
 Copyright (C) 2022 - the LunarBase team.
 This file is part of the LunarBase Framework.
-Unauthorized copying of this file, via any medium is strictly prohibited.
 
 Notes
 -----
 
 """
-import pickle
-from typing import List, Iterator, Tuple, Union
-from torch import nn, Tensor
 import logging
-import torch
 import os
+import pickle
+from typing import Iterator, List, Tuple, Union
 
-from torch.optim.lr_scheduler import LambdaLR
+import torch
+from torch import Tensor, nn
 
 logger = logging.getLogger()
 
@@ -68,35 +66,6 @@ def dict_batch_to_device(batch, target_device: str):
         if isinstance(batch[key], Tensor):
             batch[key] = batch[key].to(target_device)
     return batch
-
-
-def get_linear_warmup_scheduler(
-    optimizer, num_warmup_steps, num_training_steps, last_epoch=-1
-):
-    """
-    Based on https://github.com/huggingface/transformers/blob/v4.18.0/src/transformers/optimization.py#L75
-    Parameters
-    ----------
-    optimizer
-    num_warmup_steps
-    num_training_steps
-    last_epoch
-
-    Returns
-    -------
-
-    """
-
-    def lr_lambda(current_step: int):
-        if current_step < num_warmup_steps:
-            return float(current_step) / float(max(1, num_warmup_steps))
-        return max(
-            0.0,
-            float(num_training_steps - current_step)
-            / float(max(1, num_training_steps - num_warmup_steps)),
-        )
-
-    return LambdaLR(optimizer, lr_lambda, last_epoch)
 
 
 def text_object_length(text: Union[List, List[List]]):
