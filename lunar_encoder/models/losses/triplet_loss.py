@@ -3,8 +3,8 @@ from typing import Optional, Union
 
 import torch
 
-from lunar_encoder.training.losses.base_loss import BaseLoss
-from lunar_encoder.training.typing import DistanceMetric
+from lunar_encoder.models.losses.base_loss import BaseLoss
+from lunar_encoder.typing import DistanceMetric
 from lunar_encoder.utils import setup_logger
 
 logger = logging.getLogger(__name__)

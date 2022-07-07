@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Union
+from typing import List, Optional, Union
 
 from torch import Tensor, nn
 
@@ -12,14 +12,12 @@ class Dense(nn.Module):
         output_dim: int,
         hidden_dims: Optional[List[int]] = None,
         activation: Union[Activation, str] = Activation.TANH,
-        pooled_embedding_name: str = "pooled_embedding",
     ):
         super(Dense, self).__init__()
 
         self._input_dim = input_dim
         self._output_dim = output_dim
         self._hidden_dims = hidden_dims if hidden_dims is not None else []
-        self._pooled_embedding_name = pooled_embedding_name
 
         if isinstance(activation, str):
             activation = Activation[activation.upper()]
@@ -37,12 +35,5 @@ class Dense(nn.Module):
     def pooled_embedding_name(self):
         return self._pooled_embedding_name
 
-    def forward(self, features: Dict[str, Tensor]):
-        features.update(
-            {
-                self._pooled_embedding_name: self._dense(
-                    features[self._pooled_embedding_name]
-                )
-            }
-        )
-        return features
+    def forward(self, features: Tensor):
+        return self._dense(features)

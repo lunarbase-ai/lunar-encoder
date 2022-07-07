@@ -9,7 +9,7 @@ Notes
 import logging
 import os
 import pickle
-from typing import Iterator, List, Tuple, Union
+from typing import Iterator, List, Tuple, Union, Dict
 
 import torch
 from torch import Tensor, nn
@@ -68,6 +68,27 @@ def dict_batch_to_device(batch, target_device: str):
     return batch
 
 
+def pack_batch(unpacked_batch: List[Dict[str, torch.Tensor]]):
+    """
+    Each batch dict needs to have the same keys as the anchor.
+    """
+    packed_batch = {
+        k: torch.stack([component[k] for component in unpacked_batch])
+        for k in unpacked_batch[0].keys()
+    }
+    return packed_batch
+
+
+def unpack_batch(packed_batch: Dict[str, torch.Tensor], num_components: int):
+    """
+    Returns equally sized *num_components* chunks of the original tensors as **tensor views**
+    """
+    unpacked_batch = {
+        k: torch.vsplit(packed_batch[k], num_components) for k in packed_batch.keys()
+    }
+    return unpacked_batch
+
+
 def text_object_length(text: Union[List, List[List]]):
     """
     Help function to get the length for the input text. Text can be either
@@ -83,6 +104,22 @@ def text_object_length(text: Union[List, List[List]]):
         return len(text)
     else:
         return sum([len(t) for t in text])  # Sum of length of individual strings
+
+
+def get_parameter_names(model, forbidden_layer_types):
+    """
+    Returns the names of the model parameters that are not inside a forbidden layer.
+    """
+    result = []
+    for name, child in model.named_children():
+        result += [
+            f"{name}.{n}"
+            for n in get_parameter_names(child, forbidden_layer_types)
+            if not isinstance(child, tuple(forbidden_layer_types))
+        ]
+    # Add model specific parameters (defined with nn.Parameter) since they are not in any child.
+    result += list(model._parameters.keys())
+    return result
 
 
 def save_module(module: nn.Module, module_path: str):

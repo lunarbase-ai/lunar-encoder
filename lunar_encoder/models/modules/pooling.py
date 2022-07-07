@@ -1,7 +1,7 @@
 """
 Inspired by https://github.com/UKPLab/sentence-transformers/blob/master/sentence_transformers/models/Pooling.py
 """
-from abc import abstractmethod, ABC
+from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Any, Dict, Optional, Union
 
@@ -28,11 +28,11 @@ class PoolingModel(ABC, nn.Module):
 
 class AttentionPooling(PoolingModel):
     def __init__(
-            self,
-            embedding_dim: int,
-            num_heads: int = 2,
-            num_seeds: int = 1,
-            dropout: float = 0.0,
+        self,
+        embedding_dim: int,
+        num_heads: int = 2,
+        num_seeds: int = 1,
+        dropout: float = 0.0,
     ):
         super(AttentionPooling, self).__init__()
 
@@ -67,8 +67,8 @@ class MeanPooling(PoolingModel):
         return self._with_sqrt
 
     def forward(self, input_features: Tensor, input_attention: Optional[Tensor] = None):
-        input_mask_expanded = (
-            input_attention.unsqueeze(-1).expand(input_features.size())
+        input_mask_expanded = input_attention.unsqueeze(-1).expand(
+            input_features.size()
         )
         sum_embeddings = torch.sum(input_features * input_mask_expanded, 1)
         sum_mask = input_mask_expanded.sum(1)
@@ -86,8 +86,8 @@ class MaxPooling(PoolingModel):
         super(MaxPooling, self).__init__()
 
     def forward(self, input_features: Tensor, input_attention: Optional[Tensor] = None):
-        input_mask_expanded = (
-            input_attention.unsqueeze(-1).expand(input_features.size())
+        input_mask_expanded = input_attention.unsqueeze(-1).expand(
+            input_features.size()
         )
         input_features[input_mask_expanded == 0] = -1e9
         pooled_output = torch.max(input_features, 1)[0]
@@ -111,10 +111,9 @@ class Pooling(nn.Module):
     """
 
     def __init__(
-            self,
-            pooling_method: Union[PoolingMethod, str] = PoolingMethod.CLS,
-            pooled_embedding_name: str = "pooled_embedding",
-            **attention_pooling_params: Any
+        self,
+        pooling_method: Union[PoolingMethod, str] = PoolingMethod.CLS,
+        **attention_pooling_params: Any
     ):
         super(Pooling, self).__init__()
 
@@ -123,7 +122,6 @@ class Pooling(nn.Module):
             if isinstance(pooling_method, str)
             else pooling_method
         )
-        self._pooled_embedding_name = pooled_embedding_name
 
         if self._pooling_method == PoolingMethod.MEAN:
             self._pooler = MeanPooling(with_sqrt=False)
@@ -155,6 +153,4 @@ class Pooling(nn.Module):
         token_embeddings = features["token_embeddings"]
         attention_mask = features["attention_mask"]
         pooled_output = self._pooler(token_embeddings, attention_mask)
-
-        features.update({self._pooled_embedding_name: pooled_output})
-        return features
+        return pooled_output

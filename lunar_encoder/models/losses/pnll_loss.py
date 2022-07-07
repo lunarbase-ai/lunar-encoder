@@ -2,20 +2,20 @@ import logging
 from typing import Optional, Union
 
 import torch
+import torch.nn.functional as F
 
-from lunar_encoder.training.losses.base_loss import BaseLoss
-from lunar_encoder.training.typing import DistanceMetric
+from lunar_encoder.models.losses.base_loss import BaseLoss
+from lunar_encoder.typing import DistanceMetric
 from lunar_encoder.utils import setup_logger
 
 logger = logging.getLogger(__name__)
 setup_logger(logger)
 
 
-class ContrastiveLoss(BaseLoss):
+class PNLLLoss(BaseLoss):
     def __init__(
         self,
-        distance_metric: Union[str, DistanceMetric] = DistanceMetric.COSINE,
-        margin: float = 0.5,
+        distance_metric: Union[str, DistanceMetric] = DistanceMetric.DOT,
         reduction: Optional[str] = "mean",
     ):
         super().__init__(reduction)
@@ -24,22 +24,12 @@ class ContrastiveLoss(BaseLoss):
             distance_metric = DistanceMetric[distance_metric.upper()]
 
         self._distance_metric = distance_metric
-        self._margin = margin
 
     @property
     def distance_metric(self):
         return self._distance_metric
 
-    @property
-    def margin(self):
-        return self._margin
-
-    def __call__(
-        self,
-        anchors: torch.Tensor,
-        examples: torch.Tensor,
-        labels: Optional[torch.Tensor] = None,
-    ):
+    def __call__(self, anchors: torch.Tensor, examples: torch.Tensor):
         """
         Inspired by
         https://github.com/UKPLab/sentence-transformers/blob/master/sentence_transformers/evaluation/EmbeddingSimilarityEvaluator.py
@@ -47,19 +37,19 @@ class ContrastiveLoss(BaseLoss):
         ----------
         anchors
         examples
-        labels
 
         Returns
         -------
 
         """
         distance_values = self._distance_metric(anchors, examples)
-        loss_values = 0.5 * (
-            labels.float() * distance_values.pow(2)
-            + (1 - labels).float() * torch.relu(self._margin - distance_values).pow(2)
+        if len(anchors.size()) > 1:
+            a_num = anchors.size(0)
+            distance_values = anchors.view(a_num, -1)
+        softmax_scores = F.log_softmax(distance_values, dim=1)
+        loss_values = F.nll_loss(
+            softmax_scores,
+            torch.arange(0, softmax_scores.shape[0]).to(softmax_scores.device),
+            reduction=self._reduction,
         )
-        if self._reduction is None:
-            return loss_values
-        elif self._reduction == "sum":
-            return loss_values.sum()
-        return loss_values.mean()
+        return loss_values

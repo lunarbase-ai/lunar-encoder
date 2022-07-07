@@ -1,20 +1,28 @@
+from dataclasses import dataclass, field
 from enum import Enum
+from typing import Optional
+
 import torch
 import transformers
 
-from lunar_encoder.training.losses.contrastive_loss import ContrastiveLoss
-from lunar_encoder.training.losses.triplet_loss import TripletLoss
+from lunar_encoder.models.losses.base_loss import BaseLoss
+from lunar_encoder.models.losses.contrastive_loss import ContrastiveLoss
+from lunar_encoder.models.losses.pnll_loss import PNLLLoss
+from lunar_encoder.models.losses.triplet_loss import TripletLoss
 
 
 class Loss(Enum):
     CONTRASTIVE = "contrastive"
     TRIPLET = "triplet"
+    PNLL = "pnll"
 
     def __call__(self, **kwargs):
         if self.name == "CONTRASTIVE":
             return ContrastiveLoss(**kwargs)
         elif self.name == "TRIPLET":
             return TripletLoss(**kwargs)
+        elif self.name == "PNLL":
+            return PNLLLoss(**kwargs)
         else:
             raise ValueError(
                 "Unknown loss type {}. Accepted types are {}.".format(
@@ -106,3 +114,11 @@ class DistanceMetric(Enum):
                     self.name, DistanceMetric.__dict__.keys()
                 )
             )
+
+
+@dataclass
+class PassageTrainer:
+    loss: Optional[BaseLoss] = field(default=None)
+    optimizer: Optional[torch.optim.Optimizer] = field(default=None)
+    scheduler: Optional[torch.optim.lr_scheduler.LambdaLR] = field(default=None)
+    scaler: Optional[torch.cuda.amp.GradScaler] = field(default=None)
