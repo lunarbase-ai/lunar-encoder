@@ -96,7 +96,7 @@ class Transformer(nn.Module):
     def get_word_embedding_dimension(self) -> int:
         return self._auto_model.config.hidden_size
 
-    def tokenize(self, texts: Union[List[str], List[Dict], List[Tuple[str, str]]]):
+    def tokenize(self, texts: Union[List[str], List[Dict], List[List[str]]]):
         """
         Tokenizes a text and maps tokens to token-ids
         """
@@ -112,11 +112,11 @@ class Transformer(nn.Module):
                 output["text_keys"].append(text_key)
             to_tokenize = [to_tokenize]
         else:
-            batch1, batch2 = [], []
+            num_texts = len(texts[0])
+            to_tokenize = [[] for _ in range(num_texts)]
             for text_tuple in texts:
-                batch1.append(text_tuple[0])
-                batch2.append(text_tuple[1])
-            to_tokenize = [batch1, batch2]
+                for idx, txt in enumerate(text_tuple):
+                    to_tokenize[idx].append(txt)
 
         # strip
         to_tokenize = [[str(s).strip() for s in col] for col in to_tokenize]
@@ -130,6 +130,7 @@ class Transformer(nn.Module):
                 max_length=self._max_seq_length
             )
         )
+        # TODO: check this outptu - there is a bug here !!!
         return output
 
     def save(self, model_path: str):

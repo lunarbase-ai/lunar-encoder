@@ -89,21 +89,21 @@ def unpack_batch(packed_batch: Dict[str, torch.Tensor], num_components: int):
     return unpacked_batch
 
 
-def text_object_length(text: Union[List, List[List]]):
-    """
-    Help function to get the length for the input text. Text can be either
-    a list of ints (which means a single text as input), or a tuple of list of ints
-    (representing several text inputs to the model).
-    """
-
-    if isinstance(text, dict):  # {key: value} case
-        return len(next(iter(text.values())))
-    elif not hasattr(text, "__len__"):  # Object has no len() method
-        return 1
-    elif len(text) == 0 or isinstance(text[0], int):  # Empty string or list of ints
-        return len(text)
-    else:
-        return sum([len(t) for t in text])  # Sum of length of individual strings
+# def text_object_length(text: Union[List, List[List]]):
+#     """
+#     Help function to get the length for the input text. Text can be either
+#     a list of ints (which means a single text as input), or a tuple of list of ints
+#     (representing several text inputs to the model).
+#     """
+#
+#     if isinstance(text, dict):  # {key: value} case
+#         return len(next(iter(text.values())))
+#     elif not hasattr(text, "__len__"):  # Object has no len() method
+#         return 1
+#     elif len(text) == 0 or isinstance(text[0], int):  # Empty string or list of ints
+#         return len(text)
+#     else:
+#         return sum([len(t) for t in text])  # Sum of length of individual strings
 
 
 def get_parameter_names(model, forbidden_layer_types):

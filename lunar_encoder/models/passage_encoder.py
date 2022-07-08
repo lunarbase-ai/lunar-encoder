@@ -1,8 +1,9 @@
 import dataclasses
 import json
 import logging
+import math
 import os
-from typing import Dict, Iterable, List, Optional, Tuple, Union, Iterator
+from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
@@ -14,17 +15,18 @@ from tqdm.notebook import tqdm
 
 from lunar_encoder.models.base_encoder import BaseEncoder
 from lunar_encoder.models.config import EncoderConfig
+from lunar_encoder.models.typing import Loss
 from lunar_encoder.models.modules.dense import Dense
 from lunar_encoder.models.modules.pooling import Pooling
 from lunar_encoder.models.modules.transformer import Transformer
-from lunar_encoder.typing import Loss, Optimizer, Scheduler, PassageTrainer
+from lunar_encoder.models.typing import Optimizer, PassageTrainer, Scheduler
 from lunar_encoder.utils import (
     dict_batch_to_device,
-    load_module,
-    save_module,
-    pack_batch,
-    unpack_batch,
     get_parameter_names,
+    load_module,
+    pack_batch,
+    save_module,
+    unpack_batch,
 )
 
 
@@ -127,11 +129,11 @@ class PassageEncoder(BaseEncoder):
         show_progress_bar: bool = False,
         as_tensor: bool = False,
         normalize_embeddings: bool = True,
-        use16: Optional[bool] = None,
+        amp: Optional[bool] = None,
     ) -> Union[np.ndarray, Tensor]:
 
-        if use16 is None:
-            use16 = self.config.use16
+        if amp is None:
+            amp = self.config.amp
 
         self.eval()
         if show_progress_bar is None:
@@ -157,7 +159,7 @@ class PassageEncoder(BaseEncoder):
             features = dict_batch_to_device(features, self.config.device)
             with torch.autocast(
                 device_type=self.config.device,
-                enabled=use16,
+                enabled=amp,
                 dtype=torch.bfloat16 if self.config.device == "cpu" else torch.float16,
             ):
                 with torch.no_grad():
@@ -252,9 +254,7 @@ class PassageEncoder(BaseEncoder):
             self._trainer.scaler.scale(loss_values).backward()
         return loss_values.detach()
 
-    def training_epoch(
-        self, epoch_iterator: Iterator[List[Dict[str, torch.Tensor]]], num_steps: int
-    ):
+    def training_epoch(self, epoch_iterator: DataLoader, num_steps: int):
         self.train()
 
         epoch_losses = []
@@ -315,10 +315,35 @@ class PassageEncoder(BaseEncoder):
 
         return epoch_losses
 
-    def fit(self, data_loader: DataLoader, batch_size: int = 32, num_epochs: int = 1):
-        self.init_trainer()
-        # TODO: Add main outer training loop + data/batch preparation
+    def collate_tokenize(self, text_batch: List[List[str]]):
+        tokenized = self._transformer.tokenize(text_batch)
+        tokenized = dict_batch_to_device(tokenized, self.config.device)
+        return tokenized
 
+    def fit(
+        self,
+        training_dataset: Iterable[List[str]],
+        batch_size: int = 32,
+        num_epochs: int = 1,
+    ):
+        """
+        The training data is expected to come in as a collection of pairs or triplets.
+        """
+        self.init_trainer()
+
+        dataloader = DataLoader(
+            training_dataset,
+            batch_size=batch_size,
+            shuffle=True,
+            collate_fn=self.collate_tokenize,
+        )
+        num_steps = math.ceil(len(training_dataset) / batch_size)
+        loss_log = dict()
+        for e in range(num_epochs):
+            epoch_losses = self.training_epoch(dataloader, num_steps=num_steps)
+            loss_log[e] = epoch_losses
+
+        return loss_log
 
     def save(self, model_path: str):
 

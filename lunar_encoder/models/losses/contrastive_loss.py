@@ -1,14 +1,8 @@
-import logging
 from typing import Optional, Union
 
 import torch
 
-from lunar_encoder.models.losses.base_loss import BaseLoss
-from lunar_encoder.typing import DistanceMetric
-from lunar_encoder.utils import setup_logger
-
-logger = logging.getLogger(__name__)
-setup_logger(logger)
+from lunar_encoder.models.losses.base_loss import BaseLoss, DistanceMetric
 
 
 class ContrastiveLoss(BaseLoss):
@@ -18,12 +12,8 @@ class ContrastiveLoss(BaseLoss):
         margin: float = 0.5,
         reduction: Optional[str] = "mean",
     ):
-        super().__init__(reduction)
+        super().__init__(distance_metric=distance_metric, reduction=reduction)
 
-        if isinstance(distance_metric, str):
-            distance_metric = DistanceMetric[distance_metric.upper()]
-
-        self._distance_metric = distance_metric
         self._margin = margin
 
     @property

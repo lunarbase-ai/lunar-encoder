@@ -2,7 +2,7 @@ from typing import List, Optional, Union
 
 from torch import Tensor, nn
 
-from lunar_encoder.training import Activation
+from lunar_encoder.models.typing import Activation
 
 
 class Dense(nn.Module):
@@ -21,7 +21,7 @@ class Dense(nn.Module):
 
         if isinstance(activation, str):
             activation = Activation[activation.upper()]
-        self._activation = activation.value
+        self._activation = activation
 
         layer_dims = self._hidden_dims + [self._output_dim]
         in_dim = self._input_dim

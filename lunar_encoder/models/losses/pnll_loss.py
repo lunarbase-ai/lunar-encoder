@@ -1,15 +1,9 @@
-import logging
 from typing import Optional, Union
 
 import torch
 import torch.nn.functional as F
 
-from lunar_encoder.models.losses.base_loss import BaseLoss
-from lunar_encoder.typing import DistanceMetric
-from lunar_encoder.utils import setup_logger
-
-logger = logging.getLogger(__name__)
-setup_logger(logger)
+from lunar_encoder.models.losses.base_loss import BaseLoss, DistanceMetric
 
 
 class PNLLLoss(BaseLoss):
@@ -18,12 +12,7 @@ class PNLLLoss(BaseLoss):
         distance_metric: Union[str, DistanceMetric] = DistanceMetric.DOT,
         reduction: Optional[str] = "mean",
     ):
-        super().__init__(reduction)
-
-        if isinstance(distance_metric, str):
-            distance_metric = DistanceMetric[distance_metric.upper()]
-
-        self._distance_metric = distance_metric
+        super().__init__(distance_metric=distance_metric, reduction=reduction)
 
     @property
     def distance_metric(self):
