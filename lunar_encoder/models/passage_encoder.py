@@ -157,7 +157,7 @@ class PassageEncoder(BaseEncoder):
             features = self._transformer.tokenize(sentences_batch)
             features = dict_batch_to_device(features, self.config.device)
             with torch.autocast(
-                device_type=self.config.device,
+                device_type=str(self.config.device),
                 enabled=amp,
                 dtype=torch.bfloat16 if self.config.device == "cpu" else torch.float16,
             ):
@@ -228,14 +228,14 @@ class PassageEncoder(BaseEncoder):
 
         # Instantiate scaler
         self._trainer.scaler = None
-        if self._config.amp and self.device != "cpu":
+        if self._config.amp and self.config.device != "cpu":
             self._trainer.scaler = GradScaler()
 
     def training_step(self, batch_data: Dict[str, torch.Tensor], num_examples: int):
         with torch.autocast(
-            device_type=self.device,
+            device_type=str(self.config.device),
             enabled=self._config.amp,
-            dtype=torch.bfloat16 if self.device == "cpu" else torch.float16,
+            dtype=torch.bfloat16 if self.config.device == "cpu" else torch.float16,
         ):
             # packed_batch = pack_batch(batch_data)
             with torch.set_grad_enabled(True):
@@ -333,13 +333,6 @@ class PassageEncoder(BaseEncoder):
         tokenized = self._transformer.tokenize(texts)
         tokenized = dict_batch_to_device(tokenized, self.config.device)
         return tokenized
-        # sentence_features = []
-        # for idx in range(num_texts):
-        #     tokenized = self._transformer.tokenize(texts[idx])
-        #     sentence_features.append(tokenized)
-
-        # sentence_features = dict_batch_to_device(sentence_features, self.config.device)
-        # return sentence_features
 
     def fit(
         self,
@@ -411,12 +404,12 @@ class PassageEncoder(BaseEncoder):
         return PassageEncoder(config=config, pooling=pooler, dense=dense)
 
 
-if __name__ == "__main__":
-    config = EncoderConfig(
-        scheduler_args={"num_warmup_steps": 0, "num_training_steps": 1},
-        optimizer_args={"lr": 2e-5},
-    )
-    encoder = PassageEncoder(config=config)
-    encoder.fit(
-        [["Another test sentence!", "A similar another test sentence!"]], batch_size=1
-    )
+# if __name__ == "__main__":
+#     config = EncoderConfig(
+#         scheduler_args={"num_warmup_steps": 0, "num_training_steps": 1},
+#         optimizer_args={"lr": 2e-5},
+#     )
+#     encoder = PassageEncoder(config=config)
+#     encoder.fit(
+#         [["Another test sentence!", "A similar another test sentence!"]], batch_size=1
+#     )

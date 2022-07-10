@@ -9,33 +9,6 @@ from lunar_encoder.models.losses.pnll_loss import PNLLLoss
 from lunar_encoder.models.losses.triplet_loss import TripletLoss
 
 
-class DistanceMetric(Enum):
-    """
-    The metric for the contrastive loss
-    """
-
-    EUCLIDEAN = "euclidean"
-    MANHATTAN = "manhattan"
-    COSINE = "cosine"
-    DOT = "dot"
-
-    def __call__(self, x, y):
-        if self.name == "EUCLIDEAN":
-            return torch.pairwise_distance(x, y, p=2)
-        elif self.name == "MANHATTAN":
-            return torch.pairwise_distance(x, y, p=1)
-        elif self.name == "COSINE":
-            return 1 - torch.cosine_similarity(x, y)
-        elif self.name == "DOT":
-            return torch.matmul(x, torch.transpose(y, 0, 1))
-        else:
-            raise ValueError(
-                "Unknown distance metric type {}. Accepted types are {}.".format(
-                    self.name, DistanceMetric.__dict__.keys()
-                )
-            )
-
-
 class Optimizer(Enum):
     ADADELTA = "adadelta"
     ADAGRAD = "adagrad"

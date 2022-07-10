@@ -70,15 +70,3 @@ class InferenceClient:
     def prepare_numpy_output(response_data):
         response_data = np.array(response_data)
         return response_data
-
-
-# if __name__ == "__main__":
-#     texts = [
-#         "Downing Street has released its readout of Boris Johnson’s call with Volodymyr Zelenskiy, the Ukrainiain president.",
-#         "It suggests Johnson had an upbeat message for his ally.",
-#         "The prime minister updated on the latest UK military equipment, including 10 self-propelled artillery systems and loitering munitions, which would be arriving in the coming days and weeks.",
-#         "The prime minister said the world was behind Ukraine, and he believed President Zelenskiy’s military could retake territory recently captured by Putin’s forces.",
-#     ]
-#     client = InferenceClient(model_name="lunarenc", port=8443)
-#     response = client.predict(input_data=texts)
-#     print(response)
