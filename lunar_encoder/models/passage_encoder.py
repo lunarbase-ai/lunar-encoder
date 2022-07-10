@@ -303,7 +303,8 @@ class PassageEncoder(BaseEncoder):
             epoch_iterator,
             desc=f"\tIteration {training_step_id} ",
             smoothing=0.05,
-            disable=self.logger.getEffectiveLevel() != logging.DEBUG,
+            # disable=self.logger.getEffectiveLevel() != logging.DEBUG,
+            disable=False,
         ):
             loss_values = self.training_step(
                 batch_data=batch_data, num_examples=num_examples
