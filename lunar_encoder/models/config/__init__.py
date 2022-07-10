@@ -2,8 +2,7 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Optional, Union
 
 from lunar_encoder.models.losses.base_loss import DistanceMetric
-from lunar_encoder.models.typing import Loss
-from lunar_encoder.models.typing import Scheduler, Optimizer
+from lunar_encoder.models.lunar_typing.enums import Loss, Scheduler, Optimizer
 
 
 @dataclass

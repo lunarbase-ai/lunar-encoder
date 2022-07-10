@@ -15,16 +15,15 @@ from tqdm.notebook import tqdm
 
 from lunar_encoder.models.base_encoder import BaseEncoder
 from lunar_encoder.models.config import EncoderConfig
-from lunar_encoder.models.typing import Loss
 from lunar_encoder.models.modules.dense import Dense
 from lunar_encoder.models.modules.pooling import Pooling
 from lunar_encoder.models.modules.transformer import Transformer
-from lunar_encoder.models.typing import Optimizer, PassageTrainer, Scheduler
+from lunar_encoder.models.lunar_typing.enums import Loss, Optimizer, Scheduler
+from lunar_encoder.models.lunar_typing.passage_trainer import PassageTrainer
 from lunar_encoder.utils import (
     dict_batch_to_device,
     get_parameter_names,
     load_module,
-    pack_batch,
     save_module,
     unpack_batch,
 )
@@ -232,16 +231,16 @@ class PassageEncoder(BaseEncoder):
         if self._config.amp and self.device != "cpu":
             self._trainer.scaler = GradScaler()
 
-    def training_step(self, batch_data: List[Dict[str, torch.Tensor]]):
+    def training_step(self, batch_data: Dict[str, torch.Tensor], num_examples: int):
         with torch.autocast(
             device_type=self.device,
             enabled=self._config.amp,
             dtype=torch.bfloat16 if self.device == "cpu" else torch.float16,
         ):
-            packed_batch = pack_batch(batch_data)
+            # packed_batch = pack_batch(batch_data)
             with torch.set_grad_enabled(True):
-                packed_features = self(packed_batch)
-                unpacked_features = unpack_batch(packed_features, len(batch_data))
+                packed_features = self(batch_data)
+                unpacked_features = unpack_batch(packed_features, num_examples)
                 loss_values = self._trainer.loss(
                     *unpacked_features[self.config.pooled_embedding_name]
                 )
@@ -254,7 +253,9 @@ class PassageEncoder(BaseEncoder):
             self._trainer.scaler.scale(loss_values).backward()
         return loss_values.detach()
 
-    def training_epoch(self, epoch_iterator: DataLoader, num_steps: int):
+    def training_epoch(
+        self, epoch_iterator: DataLoader, num_steps: int, num_examples: int
+    ):
         self.train()
 
         epoch_losses = []
@@ -265,13 +266,16 @@ class PassageEncoder(BaseEncoder):
             smoothing=0.05,
             disable=self.logger.getEffectiveLevel() != logging.DEBUG,
         ):
-            loss_values = self.training_step(batch_data=batch_data)
+            loss_values = self.training_step(
+                batch_data=batch_data, num_examples=num_examples
+            )
 
             # if loss is nan or inf simply add the average of previous logged losses
             if torch.isnan(loss_values) or torch.isinf(loss_values):
                 if len(epoch_losses) == 0:
                     raise ValueError(
-                        f"Encountered {loss_values.item()} loss value and there are no accumulated losses for the current epoch."
+                        f"Encountered {loss_values.item()} loss value and there are "
+                        f"no accumulated losses for the current epoch."
                     )
 
                 self.logger.warning(
@@ -316,13 +320,30 @@ class PassageEncoder(BaseEncoder):
         return epoch_losses
 
     def collate_tokenize(self, text_batch: List[List[str]]):
-        tokenized = self._transformer.tokenize(text_batch)
+
+        num_texts = len(text_batch[0])
+        # texts = [[] for _ in range(num_texts)]
+        texts = []
+        for idx in range(num_texts):
+            for example in text_batch:
+                texts.append(example[idx])
+            # for idx, text in enumerate(example):
+            #     texts[idx].append(text)
+
+        tokenized = self._transformer.tokenize(texts)
         tokenized = dict_batch_to_device(tokenized, self.config.device)
         return tokenized
+        # sentence_features = []
+        # for idx in range(num_texts):
+        #     tokenized = self._transformer.tokenize(texts[idx])
+        #     sentence_features.append(tokenized)
+
+        # sentence_features = dict_batch_to_device(sentence_features, self.config.device)
+        # return sentence_features
 
     def fit(
         self,
-        training_dataset: Iterable[List[str]],
+        training_dataset: List[List[str]],
         batch_size: int = 32,
         num_epochs: int = 1,
     ):
@@ -338,9 +359,12 @@ class PassageEncoder(BaseEncoder):
             collate_fn=self.collate_tokenize,
         )
         num_steps = math.ceil(len(training_dataset) / batch_size)
+        num_examples = len(training_dataset[0])
         loss_log = dict()
         for e in range(num_epochs):
-            epoch_losses = self.training_epoch(dataloader, num_steps=num_steps)
+            epoch_losses = self.training_epoch(
+                dataloader, num_steps=num_steps, num_examples=num_examples
+            )
             loss_log[e] = epoch_losses
 
         return loss_log
@@ -385,3 +409,14 @@ class PassageEncoder(BaseEncoder):
             dense = load_module(os.path.join(model_path, "passage_encoder_dense.pt"))
 
         return PassageEncoder(config=config, pooling=pooler, dense=dense)
+
+
+if __name__ == "__main__":
+    config = EncoderConfig(
+        scheduler_args={"num_warmup_steps": 0, "num_training_steps": 1},
+        optimizer_args={"lr": 2e-5},
+    )
+    encoder = PassageEncoder(config=config)
+    encoder.fit(
+        [["Another test sentence!", "A similar another test sentence!"]], batch_size=1
+    )

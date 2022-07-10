@@ -58,10 +58,11 @@ def iterate_embedding_files(
                 yield doc
 
 
-def dict_batch_to_device(batch, target_device: str):
+def dict_batch_to_device(batch: Dict, target_device: str):
     """
     send a pytorch batch to a device (CPU/GPU)
     """
+
     for key in batch:
         if isinstance(batch[key], Tensor):
             batch[key] = batch[key].to(target_device)
@@ -71,6 +72,7 @@ def dict_batch_to_device(batch, target_device: str):
 def pack_batch(unpacked_batch: List[Dict[str, torch.Tensor]]):
     """
     Each batch dict needs to have the same keys as the anchor.
+    **NOT USED**
     """
     packed_batch = {
         k: torch.stack([component[k] for component in unpacked_batch])
@@ -87,23 +89,6 @@ def unpack_batch(packed_batch: Dict[str, torch.Tensor], num_components: int):
         k: torch.vsplit(packed_batch[k], num_components) for k in packed_batch.keys()
     }
     return unpacked_batch
-
-
-# def text_object_length(text: Union[List, List[List]]):
-#     """
-#     Help function to get the length for the input text. Text can be either
-#     a list of ints (which means a single text as input), or a tuple of list of ints
-#     (representing several text inputs to the model).
-#     """
-#
-#     if isinstance(text, dict):  # {key: value} case
-#         return len(next(iter(text.values())))
-#     elif not hasattr(text, "__len__"):  # Object has no len() method
-#         return 1
-#     elif len(text) == 0 or isinstance(text[0], int):  # Empty string or list of ints
-#         return len(text)
-#     else:
-#         return sum([len(t) for t in text])  # Sum of length of individual strings
 
 
 def get_parameter_names(model, forbidden_layer_types):

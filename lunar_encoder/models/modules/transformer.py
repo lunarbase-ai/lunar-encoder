@@ -1,7 +1,7 @@
 """
 Inspired by https://github.com/UKPLab/sentence-transformers/blob/master/sentence_transformers/models/Transformer.py
 """
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Union, Tuple
 
 from torch import Tensor, nn
 from transformers import AutoConfig, AutoModel, AutoTokenizer, T5Config
@@ -96,7 +96,7 @@ class Transformer(nn.Module):
     def get_word_embedding_dimension(self) -> int:
         return self._auto_model.config.hidden_size
 
-    def tokenize(self, texts: Union[List[str], List[Dict], List[List[str]]]):
+    def tokenize(self, texts: Union[List[str], List[Dict], List[Tuple[str, str]]]):
         """
         Tokenizes a text and maps tokens to token-ids
         """
@@ -112,11 +112,11 @@ class Transformer(nn.Module):
                 output["text_keys"].append(text_key)
             to_tokenize = [to_tokenize]
         else:
-            num_texts = len(texts[0])
-            to_tokenize = [[] for _ in range(num_texts)]
+            batch1, batch2 = [], []
             for text_tuple in texts:
-                for idx, txt in enumerate(text_tuple):
-                    to_tokenize[idx].append(txt)
+                batch1.append(text_tuple[0])
+                batch2.append(text_tuple[1])
+            to_tokenize = [batch1, batch2]
 
         # strip
         to_tokenize = [[str(s).strip() for s in col] for col in to_tokenize]
@@ -130,7 +130,6 @@ class Transformer(nn.Module):
                 max_length=self._max_seq_length
             )
         )
-        # TODO: check this outptu - there is a bug here !!!
         return output
 
     def save(self, model_path: str):

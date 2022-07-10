@@ -2,7 +2,7 @@ from typing import List, Optional, Union
 
 from torch import Tensor, nn
 
-from lunar_encoder.models.typing import Activation
+from lunar_encoder.models.lunar_typing.enums import Activation
 
 
 class Dense(nn.Module):
