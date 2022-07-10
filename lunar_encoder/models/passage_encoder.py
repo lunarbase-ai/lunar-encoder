@@ -7,7 +7,9 @@ from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
+from packaging import version
 from torch import Tensor, nn
+from torch.nn import functional as F
 from torch.cuda.amp import GradScaler
 from torch.utils.data import DataLoader
 from tqdm.autonotebook import trange
@@ -15,11 +17,11 @@ from tqdm.notebook import tqdm
 
 from lunar_encoder.models.base_encoder import BaseEncoder
 from lunar_encoder.models.config import EncoderConfig
+from lunar_encoder.models.lunar_typing.enums import Loss, Optimizer, Scheduler
+from lunar_encoder.models.lunar_typing.passage_trainer import PassageTrainer
 from lunar_encoder.models.modules.dense import Dense
 from lunar_encoder.models.modules.pooling import Pooling
 from lunar_encoder.models.modules.transformer import Transformer
-from lunar_encoder.models.lunar_typing.enums import Loss, Optimizer, Scheduler
-from lunar_encoder.models.lunar_typing.passage_trainer import PassageTrainer
 from lunar_encoder.utils import (
     dict_batch_to_device,
     get_parameter_names,
@@ -27,6 +29,10 @@ from lunar_encoder.utils import (
     save_module,
     unpack_batch,
 )
+
+NATIVE_CPU_AMP = False
+if version.parse(torch.__version__) >= version.parse("1.10"):
+    NATIVE_CPU_AMP = True
 
 
 class PassageEncoder(BaseEncoder):
@@ -156,19 +162,37 @@ class PassageEncoder(BaseEncoder):
             sentences_batch = sentences_sorted[start_index : start_index + batch_size]
             features = self._transformer.tokenize(sentences_batch)
             features = dict_batch_to_device(features, self.config.device)
-            with torch.autocast(
-                device_type=str(self.config.device),
-                enabled=amp,
-                dtype=torch.bfloat16 if self.config.device == "cpu" else torch.float16,
-            ):
-                with torch.no_grad():
-                    out_features = self.forward(features)
-                    embeddings = out_features[
-                        self._config.pooled_embedding_name
-                    ].detach()
+
+            if NATIVE_CPU_AMP:
+                with torch.autocast(
+                    device_type=str(self.config.device),
+                    enabled=amp,
+                    dtype=torch.bfloat16
+                    if self.config.device == "cpu"
+                    else torch.float16,
+                ):
+                    with torch.no_grad():
+                        out_features = self.forward(features)
+                        embeddings = out_features[
+                            self._config.pooled_embedding_name
+                        ].detach()
+            else:
+                if self.config.device == "cpu" and amp:
+                    raise ValueError(
+                        "Tried to use `fp16` but it is not supported on cpu with current PyTorch version."
+                    )
+                else:
+                    with torch.cuda.amp.autocast(
+                        enabled=amp,
+                    ):
+                        with torch.no_grad():
+                            out_features = self.forward(features)
+                            embeddings = out_features[
+                                self._config.pooled_embedding_name
+                            ].detach()
 
             if normalize_embeddings:
-                embeddings = torch.nn.functional.normalize(embeddings, p=2, dim=1)
+                embeddings = F.normalize(embeddings, p=2, dim=1)
 
             if not as_tensor:
                 embeddings = embeddings.cpu()
@@ -232,18 +256,33 @@ class PassageEncoder(BaseEncoder):
             self._trainer.scaler = GradScaler()
 
     def training_step(self, batch_data: Dict[str, torch.Tensor], num_examples: int):
-        with torch.autocast(
-            device_type=str(self.config.device),
-            enabled=self._config.amp,
-            dtype=torch.bfloat16 if self.config.device == "cpu" else torch.float16,
-        ):
-            # packed_batch = pack_batch(batch_data)
-            with torch.set_grad_enabled(True):
-                packed_features = self(batch_data)
-                unpacked_features = unpack_batch(packed_features, num_examples)
-                loss_values = self._trainer.loss(
-                    *unpacked_features[self.config.pooled_embedding_name]
+        if NATIVE_CPU_AMP:
+            with torch.autocast(
+                device_type=str(self.config.device),
+                enabled=self._config.amp,
+                dtype=torch.bfloat16 if self.config.device == "cpu" else torch.float16,
+            ):
+                with torch.set_grad_enabled(True):
+                    packed_features = self(batch_data)
+                    unpacked_features = unpack_batch(packed_features, num_examples)
+                    loss_values = self._trainer.loss(
+                        *unpacked_features[self.config.pooled_embedding_name]
+                    )
+        else:
+            if self.config.device == "cpu" and self.config.amp:
+                raise ValueError(
+                    "Tried to use `fp16` but it is not supported on cpu with current PyTorch version."
                 )
+            else:
+                with torch.cuda.amp.autocast(
+                    enabled=self._config.amp,
+                ):
+                    with torch.set_grad_enabled(True):
+                        packed_features = self(batch_data)
+                        unpacked_features = unpack_batch(packed_features, num_examples)
+                        loss_values = self._trainer.loss(
+                            *unpacked_features[self.config.pooled_embedding_name]
+                        )
 
         if self._config.grad_accumulation > 1:
             loss_values = loss_values / self._config.grad_accumulation
