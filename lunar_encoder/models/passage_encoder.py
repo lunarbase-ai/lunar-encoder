@@ -16,7 +16,7 @@ from tqdm.autonotebook import trange
 from tqdm.notebook import tqdm
 
 from lunar_encoder.models.base_encoder import BaseEncoder
-from lunar_encoder.models.config import EncoderConfig
+from lunar_encoder.models.config import EncoderConfig, ConfigSerializationEncoder
 from lunar_encoder.models.lunar_typing.enums import Loss, Optimizer, Scheduler
 from lunar_encoder.models.lunar_typing.passage_trainer import PassageTrainer
 from lunar_encoder.models.modules.dense import Dense
@@ -315,6 +315,7 @@ class PassageEncoder(BaseEncoder):
         num_steps: int,
         num_examples: int,
         eval_iterator: Optional[DataLoader] = None,
+        eval_callback: Optional[callable] = None,
     ):
         self.train()
 
@@ -385,14 +386,14 @@ class PassageEncoder(BaseEncoder):
                     [
                         param is not None
                         for param in [
-                            self.config.eval_callback,
+                            eval_callback,
                             self.config.checkpoint_path,
                             eval_iterator,
                         ]
                     ]
                 ):
                     self.eval()
-                    is_better = self.config.eval_callback(
+                    is_better = eval_callback(
                         self, eval_iterator, reference_eval_metric
                     )
                     self.train()
@@ -455,7 +456,12 @@ class PassageEncoder(BaseEncoder):
         self._config.base_transformer_name = model_path
 
         with open(os.path.join(model_path, "passage_encoder_config.json"), "w") as fOut:
-            json.dump(dataclasses.asdict(self._config), fOut, indent=2)
+            json.dump(
+                dataclasses.asdict(self._config),
+                fOut,
+                indent=2,
+                cls=ConfigSerializationEncoder,
+            )
 
         self._transformer.save(model_path)
         save_module(

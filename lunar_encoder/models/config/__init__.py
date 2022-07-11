@@ -1,8 +1,9 @@
+import json
 from dataclasses import dataclass, field
-from typing import List, Dict, Optional, Union
+from typing import List, Dict, Optional, Union, Any
 
 from lunar_encoder.models.losses.base_loss import DistanceMetric
-from lunar_encoder.models.lunar_typing.enums import Loss, Scheduler, Optimizer
+from lunar_encoder.models.lunar_typing.enums import Loss, Scheduler, Optimizer, Activation
 
 
 @dataclass
@@ -34,7 +35,14 @@ class EncoderConfig:
     default_weight_decay: float = field(default=0.01)
     max_grad_norm: Optional[float] = field(default=1.0)
     grad_accumulation: int = field(default=0)
-    eval_callback: callable = field(default=None)
     checkpoint_path: Optional[str] = field(default=None)
     checkpoint_steps: int = field(default=1000)
     num_checkpoints: int = 1
+
+
+class ConfigSerializationEncoder(json.JSONEncoder):
+    def default(self, obj: Any):
+        enums = {Optimizer, Scheduler, Loss, Activation, DistanceMetric}
+        if type(obj) in enums:
+            return obj.name.upper()
+        return json.JSONEncoder.default(self, obj)

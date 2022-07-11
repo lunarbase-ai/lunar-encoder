@@ -105,3 +105,5 @@ class Activation(Enum):
                     self.name, Activation.__dict__.keys()
                 )
             )
+
+
