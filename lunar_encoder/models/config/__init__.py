@@ -15,7 +15,7 @@ class EncoderConfig:
     base_tokenizer_args: Dict = field(default_factory=dict)
     max_seq_length: int = field(default=256)
     amp: bool = field(default=True)
-    cache_folder: str = field(default=None)
+    cache_folder: str = field(default="~/.cache/lunar/")
     pooling_method: str = field(default="cls")
     dense_hidden_dims: Optional[List[int]] = field(default=None)
     dense_output_dim: Optional[int] = field(default=None)

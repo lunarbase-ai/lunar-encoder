@@ -3,6 +3,7 @@ import json
 import logging
 import math
 import os
+import datetime
 from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
@@ -443,6 +444,8 @@ class PassageEncoder(BaseEncoder):
             )
             loss_log[e] = epoch_losses
 
+        self.save(os.path.join(self.config.cache_folder, str(datetime.date.today())))
+
         return loss_log
 
     def save(self, model_path: str):
@@ -474,11 +477,10 @@ class PassageEncoder(BaseEncoder):
                 os.path.join(model_path, "passage_encoder_dense.pt"),
             )
 
-    def load(self, model_path: str):
+    @staticmethod
+    def load(model_path: str):
         if not os.path.isdir(model_path):
             raise FileNotFoundError("{}: no such directory!".format(model_path))
-
-        self.logger.info("Loading model from {}".format(model_path))
 
         pooler = load_module(os.path.join(model_path, "passage_encoder_pooler.pt"))
         dense = None

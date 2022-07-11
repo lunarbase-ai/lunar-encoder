@@ -42,7 +42,7 @@ class BaseEncoder(ABC, nn.Module):
         return config
 
     def _save_checkpoint(
-        self, current_step: int, checkpoint_path: Optional[str] = None
+        self, current_step: Union[int, str], checkpoint_path: Optional[str] = None
     ):
 
         if checkpoint_path is None:
@@ -87,6 +87,7 @@ class BaseEncoder(ABC, nn.Module):
     def save(self, model_path: str):
         pass
 
+    @staticmethod
     @abstractmethod
-    def load(self, model_path: str):
+    def load(model_path: str):
         pass
