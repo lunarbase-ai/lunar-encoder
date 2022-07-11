@@ -487,8 +487,12 @@ class PassageEncoder(BaseEncoder):
         if os.path.isfile(os.path.join(model_path, "passage_encoder_dense.pt")):
             dense = load_module(os.path.join(model_path, "passage_encoder_dense.pt"))
 
+        config = PassageEncoder.load_json_config(
+            os.path.join(model_path, "passage_encoder_config.json")
+        )
+        config.cache_folder = model_path
         return PassageEncoder(
-            config=os.path.join(model_path, "passage_encoder_config.json"),
+            config=config,
             pooling=pooler,
             dense=dense,
         )
