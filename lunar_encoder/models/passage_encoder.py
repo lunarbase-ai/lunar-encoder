@@ -456,7 +456,7 @@ class PassageEncoder(BaseEncoder):
         os.makedirs(model_path, exist_ok=True)
 
         self.logger.info("Saving model to {}".format(model_path))
-        self._config.cache_folder = model_path
+        self._config.base_transformer_name = model_path
 
         with open(os.path.join(model_path, "passage_encoder_config.json"), "w") as fOut:
             json.dump(
