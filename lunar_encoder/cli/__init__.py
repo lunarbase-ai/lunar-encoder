@@ -30,7 +30,7 @@ def package(
     torchserve_handler_path: str = typer.Option(..., "--handler"),
     version: str = typer.Option("1.0", "--version", help="Model's version"),
 ):
-
+    model_store = os.path.abspath(model_store)
     if not os.path.isdir(model_store):
         logger.info(f"{model_store} does not exist. Packaging default model.")
         encoder = PassageEncoder(config=EncoderConfig())
@@ -71,11 +71,14 @@ def deploy(
         True, "--foreground", help="Run server in foreground"
     ),
 ):
+    model_store = os.path.abspath(model_store)
     if not os.path.isdir(model_store):
         raise RuntimeError(f"Model store {model_store} does not exist.")
 
     logger.info(f"Starting server for model {model_name}.")
-    model_mar_file = model_mar if model_mar is not None else f"{model_name}.mar"
+    model_mar_file = (
+        os.path.abspath(model_mar) if model_mar is not None else f"{model_name}.mar"
+    )
 
     args = [
         "--start",
@@ -85,7 +88,7 @@ def deploy(
         f"{model_name}={model_mar_file}",
     ]
     if config_file is not None:
-        args.extend(["--ts-config", config_file])
+        args.extend(["--ts-config", os.path.abspath(config_file)])
     if not snapshots:
         args.extend(["--ncs"])
     if foreground:
