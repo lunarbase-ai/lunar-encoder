@@ -26,7 +26,7 @@ class EncoderConfig:
     # Training config
     loss: Union[str, Loss] = field(default=Loss.PNLL)
     loss_args: Dict = field(default_factory=dict)
-    scheduler: Union[str, Scheduler] = field(default=Scheduler.WARMUPLINEAR)
+    scheduler: Optional[Union[str, Scheduler]] = field(default=None)
     scheduler_args: Dict = field(default_factory=dict)
     optimizer: Union[str, Optimizer] = field(default=Optimizer.ADAM)
     optimizer_args: Dict = field(default_factory=dict)

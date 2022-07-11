@@ -1,0 +1,15 @@
+{
+  "base_transformer_name": "sentence-transformers/all-mpnet-base-v2",
+  "max_seq_length": 256,
+  "cache_folder": "/tmp",
+  "pooling_method": "mean",
+  "pooled_embedding_name": "pooled_embedding",
+  "device": "cuda",
+  "loss": "pnll",
+  "optimizer": "adam_w",
+  "optimizer_args": {"lr": 2e-5},
+  "distance_metric": "dot",
+  "default_weight_decay": 0.01,
+  "max_grad_norm": 1.0,
+  "grad_accumulation": 0
+}

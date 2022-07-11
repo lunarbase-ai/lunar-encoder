@@ -109,6 +109,20 @@ class PassageEncoder(BaseEncoder):
         return self._transformer.get_word_embedding_dimension()
 
     def forward(self, features: Dict[str, Tensor], min_out: bool = True):
+        """
+        Defines the forward pass.
+
+        Parameters
+        ----------
+        features: Dict[str, Tensor]
+            Much like the format of Huggingface's tokenizer output.
+        min_out: bool
+            If True only the pooled embedding will be returned.
+
+        Returns
+        -------
+
+        """
         features.update(self._transformer(features))
         features.update({self.config.pooled_embedding_name: self._pooler(features)})
         if self._dense is not None:
@@ -244,11 +258,14 @@ class PassageEncoder(BaseEncoder):
         )
 
         # Instantiate scheduler
-        if isinstance(self._config.scheduler, str):
-            self._config.scheduler = Scheduler[self._config.scheduler.upper()]
-        self._trainer.scheduler = self._config.scheduler(
-            self._trainer.optimizer, **self._config.scheduler_args
-        )
+        if self._config.scheduler is None:
+            self._trainer.scheduler = None
+        else:
+            if isinstance(self._config.scheduler, str):
+                self._config.scheduler = Scheduler[self._config.scheduler.upper()]
+            self._trainer.scheduler = self._config.scheduler(
+                self._trainer.optimizer, **self._config.scheduler_args
+            )
 
         # Instantiate scaler
         self._trainer.scaler = None
@@ -355,7 +372,7 @@ class PassageEncoder(BaseEncoder):
                 else:
                     self._trainer.optimizer.step()
 
-                if optimizer_was_run:
+                if optimizer_was_run and self._trainer.scheduler is not None:
                     self._trainer.scheduler.step()
 
                 self.zero_grad()
@@ -389,15 +406,11 @@ class PassageEncoder(BaseEncoder):
         return epoch_losses
 
     def collate_tokenize(self, text_batch: List[List[str]]):
-
         num_texts = len(text_batch[0])
-        # texts = [[] for _ in range(num_texts)]
         texts = []
         for idx in range(num_texts):
             for example in text_batch:
                 texts.append(example[idx])
-            # for idx, text in enumerate(example):
-            #     texts[idx].append(text)
 
         tokenized = self._transformer.tokenize(texts)
         tokenized = dict_batch_to_device(tokenized, self.config.device)
