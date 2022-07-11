@@ -453,6 +453,7 @@ class PassageEncoder(BaseEncoder):
         if model_path is None:
             return
 
+        model_path = os.path.abspath(model_path)
         os.makedirs(model_path, exist_ok=True)
 
         self.logger.info("Saving model to {}".format(model_path))
@@ -479,6 +480,7 @@ class PassageEncoder(BaseEncoder):
 
     @staticmethod
     def load(model_path: str):
+        model_path = os.path.abspath(model_path)
         if not os.path.isdir(model_path):
             raise FileNotFoundError("{}: no such directory!".format(model_path))
 
