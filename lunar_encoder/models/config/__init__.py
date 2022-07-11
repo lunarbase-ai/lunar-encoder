@@ -34,6 +34,7 @@ class EncoderConfig:
     default_weight_decay: float = field(default=0.01)
     max_grad_norm: Optional[float] = field(default=1.0)
     grad_accumulation: int = field(default=0)
+    eval_callback: callable = field(default=None)
     checkpoint_path: Optional[str] = field(default=None)
-    checkpoint_save_steps: int = field(default=500)
-    checkpoint_save_total_limit: int = field(default=0)
+    checkpoint_steps: int = field(default=1000)
+    num_checkpoints: int = 1

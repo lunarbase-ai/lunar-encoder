@@ -7,9 +7,6 @@ from ts.torch_handler.base_handler import BaseHandler
 from lunar_encoder.models.passage_encoder import PassageEncoder
 from lunar_encoder.utils import setup_logger
 
-logger = logging.getLogger()
-setup_logger(logger)
-
 
 class PassageEncoderHandler(BaseHandler):
     """
@@ -20,6 +17,10 @@ class PassageEncoderHandler(BaseHandler):
 
     def __init__(self):
         super(PassageEncoderHandler, self).__init__()
+
+        self.logger = logging.getLogger()
+        setup_logger(self.logger)
+
         self.initialized = False
 
     def initialize(self, context):
@@ -42,7 +43,7 @@ class PassageEncoderHandler(BaseHandler):
 
     def preprocess(self, requests):
         inputs = []
-        logger.info("Received raw data {}".format(requests))
+        self.logger.info("Received raw data {}".format(requests))
         for idx, data in enumerate(requests):
             input_texts = data.get("data")
             if input_texts is None:

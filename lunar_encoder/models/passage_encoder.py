@@ -9,8 +9,8 @@ import numpy as np
 import torch
 from packaging import version
 from torch import Tensor, nn
-from torch.nn import functional as F
 from torch.cuda.amp import GradScaler
+from torch.nn import functional as F
 from torch.utils.data import DataLoader
 from tqdm.autonotebook import trange
 from tqdm.notebook import tqdm
@@ -38,7 +38,7 @@ if version.parse(torch.__version__) >= version.parse("1.10"):
 class PassageEncoder(BaseEncoder):
     def __init__(
         self,
-        config: Optional[EncoderConfig] = None,
+        config: Optional[Union[str, EncoderConfig]] = None,
         pooling: Optional[Pooling] = None,
         dense: Optional[Dense] = None,
     ):
@@ -65,7 +65,7 @@ class PassageEncoder(BaseEncoder):
         if (
             self._dense is None
             and self._config.dense_hidden_dims is not None
-            and self._config.dense_hidden_dims > 0
+            and self._config.dense_hidden_dims[0] > 0
         ):
             self._dense = Dense(
                 input_dim=self._transformer.get_word_embedding_dimension(),
@@ -293,11 +293,16 @@ class PassageEncoder(BaseEncoder):
         return loss_values.detach()
 
     def training_epoch(
-        self, epoch_iterator: DataLoader, num_steps: int, num_examples: int
+        self,
+        epoch_iterator: DataLoader,
+        num_steps: int,
+        num_examples: int,
+        eval_iterator: Optional[DataLoader] = None,
     ):
         self.train()
 
         epoch_losses = []
+        reference_eval_metric = None
         training_step_id = 0
         for batch_data in tqdm(
             epoch_iterator,
@@ -356,6 +361,30 @@ class PassageEncoder(BaseEncoder):
                 self.zero_grad()
 
             training_step_id += 1
+
+            # Checkpoint
+            if training_step_id % self.config.checkpoint_steps == 0:
+                if all(
+                    [
+                        param is not None
+                        for param in [
+                            self.config.eval_callback,
+                            self.config.checkpoint_path,
+                            eval_iterator,
+                        ]
+                    ]
+                ):
+                    self.eval()
+                    is_better = self.config.eval_callback(
+                        self, eval_iterator, reference_eval_metric
+                    )
+                    self.train()
+                    if is_better:
+                        self._save_checkpoint(
+                            training_step_id, self.config.checkpoint_path
+                        )
+                elif self.config.checkpoint_path is not None:
+                    self._save_checkpoint(training_step_id, self.config.checkpoint_path)
 
         return epoch_losses
 
@@ -431,25 +460,14 @@ class PassageEncoder(BaseEncoder):
             raise FileNotFoundError("{}: no such directory!".format(model_path))
 
         self.logger.info("Loading model from {}".format(model_path))
-        with open(os.path.join(model_path, "passage_encoder_config.json")) as fIn:
-            config_dict = json.load(fIn)
-        config = EncoderConfig()
-        config.__dict__.update(config_dict)
 
         pooler = load_module(os.path.join(model_path, "passage_encoder_pooler.pt"))
         dense = None
         if os.path.isfile(os.path.join(model_path, "passage_encoder_dense.pt")):
             dense = load_module(os.path.join(model_path, "passage_encoder_dense.pt"))
 
-        return PassageEncoder(config=config, pooling=pooler, dense=dense)
-
-
-# if __name__ == "__main__":
-#     config = EncoderConfig(
-#         scheduler_args={"num_warmup_steps": 0, "num_training_steps": 1},
-#         optimizer_args={"lr": 2e-5},
-#     )
-#     encoder = PassageEncoder(config=config)
-#     encoder.fit(
-#         [["Another test sentence!", "A similar another test sentence!"]], batch_size=1
-#     )
+        return PassageEncoder(
+            config=os.path.join(model_path, "passage_encoder_config.json"),
+            pooling=pooler,
+            dense=dense,
+        )
