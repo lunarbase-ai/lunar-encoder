@@ -63,10 +63,7 @@ class PassageEncoder(BaseEncoder):
             )
 
         self._dense = dense
-        if (
-            self._dense is None
-            and self._config.dense_hidden_dims is not None
-        ):
+        if self._dense is None and self._config.dense_hidden_dims is not None:
             self._dense = Dense(
                 input_dim=self._transformer.get_word_embedding_dimension(),
                 output_dim=self._config.dense_output_dim
@@ -192,9 +189,14 @@ class PassageEncoder(BaseEncoder):
                         ].detach()
             else:
                 if self.config.device == "cpu" and amp:
-                    raise ValueError(
+                    self.logger.warning(
                         "Tried to use `fp16` but it is not supported on cpu with current PyTorch version."
                     )
+                    with torch.no_grad():
+                        out_features = self.forward(features)
+                        embeddings = out_features[
+                            self._config.pooled_embedding_name
+                        ].detach()
                 else:
                     with torch.cuda.amp.autocast(
                         enabled=amp,

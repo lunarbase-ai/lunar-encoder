@@ -70,3 +70,13 @@ class InferenceClient:
     def prepare_numpy_output(response_data):
         response_data = np.array(response_data)
         return response_data
+
+
+if __name__ == '__main__':
+    client = InferenceClient(
+        hostname="127.0.0.1",
+        port=8443,
+        model_name="lunarenc"
+    )
+    embeddings = client.predict("This is a test sentence.")
+    print(embeddings)
