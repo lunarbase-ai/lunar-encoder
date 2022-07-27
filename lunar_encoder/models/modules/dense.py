@@ -21,7 +21,7 @@ class Dense(nn.Module):
 
         if isinstance(activation, str):
             activation = Activation[activation.upper()]
-        self._activation = activation
+        self._activation = activation()
 
         layer_dims = self._hidden_dims + [self._output_dim]
         in_dim = self._input_dim

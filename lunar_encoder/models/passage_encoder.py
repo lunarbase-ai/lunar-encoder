@@ -66,7 +66,6 @@ class PassageEncoder(BaseEncoder):
         if (
             self._dense is None
             and self._config.dense_hidden_dims is not None
-            and self._config.dense_hidden_dims[0] > 0
         ):
             self._dense = Dense(
                 input_dim=self._transformer.get_word_embedding_dimension(),
