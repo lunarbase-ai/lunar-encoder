@@ -36,6 +36,8 @@ def package(
         encoder = PassageEncoder(config=EncoderConfig())
         encoder.save(model_store)
 
+    all_model_files = os.listdir(model_store)
+    extra_files = ",".join([os.path.join(model_store, f) for f in all_model_files])
     logger.info(f"Packaging model files from {model_store}.")
     arch_proc = subprocess.run(
         [
@@ -49,7 +51,8 @@ def package(
             "--export-path",
             model_store,
             "--extra-files",
-            model_store,
+            # model_store,
+            extra_files
         ]
     )
     if arch_proc.returncode == 0:
