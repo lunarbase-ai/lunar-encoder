@@ -8,8 +8,8 @@ ARG TORCH_SERVE_CONFIG="./resources/config/torchserve.properties"
 
 ENV LOG_LOCATION="/var/log"
 
-RUN addgroup --gid 1001 --system app && \
-    adduser -m -d /app --shell /bin/false --disabled-password --uid 1001 --system --group app
+RUN groupadd --gid 1001 --system app && \
+    useradd -d /app -m --shell /bin/false --disabled-password --uid 1001 --system --group app
 USER app
 
 WORKDIR /app
