@@ -6,8 +6,6 @@ ARG MODEL_NAME="lunarenc"
 ARG HANDLER="./lunar_encoder/server/handlers/passage_encoder_handler.py"
 ARG TORCH_SERVE_CONFIG="./resources/configs/torchserve.properties"
 
-ENV LOG_LOCATION="/var/log"
-
 # Install OpenJDK-11
 RUN apt-get update && \
     apt-get install -y openjdk-11-jdk && \
@@ -38,6 +36,7 @@ COPY . .
 RUN python setup.py install --user
 
 ENV PATH="${PATH}:./.local/bin/"
+ENV LOG_LOCATION="./var/log"
 
 RUN lunar-encoder package --model-store $MODEL_STORE --model-name $MODEL_NAME --handler $HANDLER
-RUN lunar-encoder deploy --model-store $MODEL_STORE --model-name $MODEL_NAME --config-file $TORCH_SERVE_CONFIG --foreground
+RUN lunar-encoder deploy --model-store $MODEL_STORE --model-name $MODEL_NAME --config-file $TORCH_SERVE_CONFIG
