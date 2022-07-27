@@ -4,7 +4,7 @@ FROM python:3.8-slim
 ARG MODEL_STORE="/tmp/lunar_encoder"
 ARG MODEL_NAME="lunarenc"
 ARG HANDLER="./lunar_encoder/server/handlers/passage_encoder_handler.py"
-ARG TORCH_SERVE_CONFIG="./resources/config/torchserve.properties"
+ARG TORCH_SERVE_CONFIG="./resources/configs/torchserve.properties"
 
 ENV LOG_LOCATION="/var/log"
 

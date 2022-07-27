@@ -75,6 +75,7 @@ def deploy(
     if not os.path.isdir(model_store):
         raise RuntimeError(f"Model store {model_store} does not exist.")
 
+    logger.info(f"Deploying model {model_name} from {model_store}.")
     logger.info(f"Starting server for model {model_name}.")
     model_mar_file = (
         os.path.abspath(model_mar) if model_mar is not None else f"{model_name}.mar"
