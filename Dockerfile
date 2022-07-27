@@ -11,7 +11,8 @@ ENV LOG_LOCATION="/var/log"
 WORKDIR /app
 
 RUN addgroup --gid 1001 --system app && \
-    adduser --no-create-home --shell /bin/false --disabled-password --uid 1001 --system --group app
+    adduser --no-create-home --shell /bin/false --disabled-password --uid 1001 --system --group app && \
+    chown -R app:app /app
 USER app
 
 COPY requirements.txt ./requirements.txt
