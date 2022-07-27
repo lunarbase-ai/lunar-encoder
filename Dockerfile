@@ -8,12 +8,11 @@ ARG TORCH_SERVE_CONFIG="./resources/config/torchserve.properties"
 
 ENV LOG_LOCATION="/var/log"
 
-WORKDIR /app
-
 RUN addgroup --gid 1001 --system app && \
-    adduser --no-create-home --shell /bin/false --disabled-password --uid 1001 --system --group app && \
-    chown -R app:app /app
+    adduser -m -d /app --shell /bin/false --disabled-password --uid 1001 --system --group app
 USER app
+
+WORKDIR /app
 
 COPY requirements.txt ./requirements.txt
 RUN python -m pip install --upgrade pip && \
