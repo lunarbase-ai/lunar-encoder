@@ -15,8 +15,8 @@ USER app
 WORKDIR /app
 
 COPY requirements.txt ./requirements.txt
-RUN python -m pip install --upgrade pip && \
-    pip install -r requirements.txt
+RUN python -m pip --no-warn-script-location install --upgrade pip && \
+    pip install --no-warn-script-location -r requirements.txt
 
 COPY . .
 RUN python setup.py install
