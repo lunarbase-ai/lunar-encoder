@@ -28,12 +28,16 @@ def package(
     model_store: str = typer.Option(..., "--model-store"),
     model_name: str = typer.Option(..., "--model-name"),
     torchserve_handler_path: str = typer.Option(..., "--handler"),
+    model_config: str = typer.Option("./encoder_config.json", "--model-config"),
     version: str = typer.Option("1.0", "--version", help="Model's version"),
 ):
     model_store = os.path.abspath(model_store)
     if not os.path.isdir(model_store):
         logger.info(f"{model_store} does not exist. Packaging default model.")
-        encoder = PassageEncoder(config=EncoderConfig())
+        if os.path.isfile(os.path.abspath(model_config)):
+            encoder = PassageEncoder(config=os.path.abspath(model_config))
+        else:
+            encoder = PassageEncoder(config=EncoderConfig())
         encoder.save(model_store)
 
     logger.info(f"Packaging model files from {model_store}.")
