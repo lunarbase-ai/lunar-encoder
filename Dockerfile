@@ -21,6 +21,8 @@ RUN addgroup --gid 1001 --system app && \
     adduser --home /app --shell /bin/false --disabled-password --uid 1001 --system --group app
 USER app
 
+COPY . /app
+
 WORKDIR /app
 
 ARG MODEL_STORE="/app/store/"
@@ -44,11 +46,9 @@ ENV LOG_LOCATION="/app/var/log"
 RUN export PATH
 RUN export LOG_LOCATION
 
-COPY requirements.txt /app/requirements.txt
-RUN python -m pip install --no-warn-script-location --user --upgrade pip && \
-    pip3 install --no-warn-script-location --user -r requirements.txt
+RUN python -m pip install --no-warn-script-location --no-cache-dir --user --upgrade pip && \
+    pip install --no-warn-script-location --no-cache-dir --user -r requirements.txt
 
-COPY . /app
 RUN python setup.py install --user
 RUN lunar-encoder package --model-store ${MODEL_STORE} --model-name ${MODEL_NAME} --handler ${HANDLER}
 
