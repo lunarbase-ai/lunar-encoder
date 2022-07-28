@@ -43,7 +43,6 @@ class PassageEncoderHandler(BaseHandler):
 
     def preprocess(self, requests):
         inputs = []
-        self.logger.info("Received raw data {}".format(requests))
         for idx, data in enumerate(requests):
             input_texts = data.get("data")
             if input_texts is None:
