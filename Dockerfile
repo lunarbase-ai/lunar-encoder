@@ -19,11 +19,14 @@ RUN export JAVA_HOME
 
 RUN addgroup --gid 1001 --system app && \
     adduser --home /app --shell /bin/false --disabled-password --uid 1001 --system --group app
-USER app
 
 COPY . /app
 
 WORKDIR /app
+
+RUN chown -R app:app /app
+
+USER app
 
 ARG MODEL_STORE="/app/store/"
 ARG MODEL_NAME="lunarenc"
@@ -46,8 +49,8 @@ ENV LOG_LOCATION="/app/var/log"
 RUN export PATH
 RUN export LOG_LOCATION
 
-RUN python -m pip install --no-warn-script-location --no-cache-dir --user --upgrade pip && \
-    pip install --no-warn-script-location --no-cache-dir --user -r requirements.txt
+RUN python -m pip install --user --upgrade pip && \
+    pip install --user -r requirements.txt
 
 RUN python setup.py install --user
 RUN lunar-encoder package --model-store ${MODEL_STORE} --model-name ${MODEL_NAME} --handler ${HANDLER}
