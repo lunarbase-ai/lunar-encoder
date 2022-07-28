@@ -49,7 +49,7 @@ RUN python -m pip install --no-warn-script-location --upgrade pip && \
     pip3 install --no-warn-script-location -r requirements.txt
 
 COPY . /app
-RUN python setup.py install --user
+RUN python setup.py install
 RUN lunar-encoder package --model-store ${MODEL_STORE} --model-name ${MODEL_NAME} --handler ${HANDLER}
 
 CMD lunar-encoder deploy --model-store ${MODEL_STORE} --model-name ${MODEL_NAME} --config-file ${TORCH_SERVE_CONFIG}
