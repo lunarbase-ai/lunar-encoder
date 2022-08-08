@@ -1,7 +1,7 @@
 {
   "base_transformer_name": "sentence-transformers/all-mpnet-base-v2",
   "max_seq_length": 256,
-  "cache_folder": "~/.cache/lunar/",
+  "cache_folder": "/tmp/.cache/lunar/",
   "pooling_method": "mean",
   "pooled_embedding_name": "pooled_embedding",
   "device": "cuda",
