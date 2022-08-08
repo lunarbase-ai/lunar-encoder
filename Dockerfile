@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 #FROM python:3.8-slim AS python
-FROM nvidia/cuda:11.0.3-base-ubuntu18.04 AS nvidia
+FROM nvidia/cuda:11.0.3-base-ubuntu18.04
 
 # Install Python 3.9
 RUN apt-get update -y && \
@@ -68,6 +68,9 @@ RUN export LOG_LOCATION
 
 RUN python3.9 -m pip install --user --upgrade pip && \
     python3.9 -m pip install --user -r requirements.txt
+
+# Specific torch version
+RUN python3.9 -m pip  install torch==1.9.0 --extra-index-url https://download.pytorch.org/whl/cu111
 
 RUN python3.9 setup.py install --user
 RUN lunar-encoder package --model-store ${MODEL_STORE} --model-name ${MODEL_NAME} --handler ${HANDLER} --model-config ${ENCODER_CONFIG}
