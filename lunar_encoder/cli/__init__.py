@@ -35,6 +35,7 @@ def package(
     if not os.path.isdir(model_store):
         logger.info(f"{model_store} does not exist. Packaging default model.")
         if os.path.isfile(os.path.abspath(model_config)):
+            logger.info(f"Readding model configuration from {os.path.abspath(model_config)}")
             encoder = PassageEncoder(config=os.path.abspath(model_config))
         else:
             encoder = PassageEncoder(config=EncoderConfig())
