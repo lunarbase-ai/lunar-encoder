@@ -3,8 +3,8 @@
 FROM nvidia/cuda:11.0.3-base-ubuntu18.04
 
 # Install Python 3.9
-RUN apt-get update -y && \
-    apt-get install -y software-properties-common && \
+RUN apt-get update -y
+RUN apt-get install -y software-properties-common && \
     add-apt-repository ppa:deadsnakes/ppa && \
     apt-get update -y && \
     DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install --no-install-recommends -y python3.9 python3-pip python3.9-dev python3-wheel python3.9-distutils build-essential && \
@@ -19,8 +19,7 @@ RUN add-apt-repository ppa:openjdk-r/ppa && \
     apt-get clean;
 
 # Fix certificate issues
-RUN apt-get update && \
-    apt-get install ca-certificates-java && \
+RUN apt-get install ca-certificates-java && \
     apt-get clean && \
     update-ca-certificates -f;
 
