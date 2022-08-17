@@ -38,11 +38,11 @@ RUN chown -R app:app /app
 
 USER app
 
-ARG MODEL_STORE="/app/store/"
+ARG MODEL_STORE="<path_to_model_store>"
 ARG MODEL_NAME="lunarenc"
-ARG HANDLER="/app/lunar_encoder/server/handlers/passage_encoder_handler.py"
-ARG TORCH_SERVE_CONFIG="/app/resources/configs/torchserve.properties"
-ARG ENCODER_CONFIG="/app/resources/configs/passage_encoder.json"
+ARG HANDLER="./lunar_encoder/server/handlers/passage_encoder_handler.py"
+ARG TORCH_SERVE_CONFIG="./resources/configs/torchserve.properties"
+ARG ENCODER_CONFIG="./resources/configs/passage_encoder.json"
 
 ENV NVIDIA_VISIBLE_DEVICES all
 ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
@@ -68,8 +68,8 @@ RUN export LOG_LOCATION
 RUN python3.9 -m pip install --user --upgrade pip && \
     python3.9 -m pip install --user -r requirements.txt
 
-# Specific torch version
-RUN python3.9 -m pip  install torch==1.9.0 --extra-index-url https://download.pytorch.org/whl/cu111
+# Specific torch version - in case is needed
+# RUN python3.9 -m pip  install torch==1.9.0 --extra-index-url https://download.pytorch.org/whl/cu111
 
 RUN python3.9 setup.py install --user
 RUN lunar-encoder package --model-store ${MODEL_STORE} --model-name ${MODEL_NAME} --handler ${HANDLER} --model-config ${ENCODER_CONFIG}

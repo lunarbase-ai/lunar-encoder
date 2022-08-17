@@ -4,7 +4,7 @@
   "cache_folder": "/tmp/.cache/lunar/",
   "pooling_method": "mean",
   "pooled_embedding_name": "pooled_embedding",
-  "device": "cuda",
+  "device": "cpu",
   "loss": "pnll",
   "optimizer": "adam_w",
   "optimizer_args": {"lr": 2e-5},
