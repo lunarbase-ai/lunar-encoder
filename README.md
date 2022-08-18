@@ -15,6 +15,12 @@ For the time being we recommend to **clone this repository** and, in the project
 
 `python setup.py install`
 
+or build and install using Docker:
+
+`docker build --tag lunar-encoder`
+`docker run [--net=<some_net>] [--gpus all] lunar-encoder`
+
+For the Docker option, `--net` options specifies the network the container will use and the `--gpus` option will give access to the host GPU. However, for GPU, additional configuration is necessary beforehand. [This documentation page](https://docs.docker.com/compose/gpu-support/) explains how to run Docker with GPU support. However, Lunar Encoder requires build time GPU access as well because of the `package` command. Accessing GPU at runtime is documented [here](https://github.com/nvidia/nvidia-container-runtime#docker-engine-setup).
 
 ### 2. Model packaging
 
