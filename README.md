@@ -13,7 +13,7 @@ The package requires `Python 3.7+` and `Java 8+`.
 
 For the time being we recommend to **clone this repository** and, in the project's directory, run:
 
-`python setup.py install`
+`python setup.py install` (or install using `pip` directly from GitHub).
 
 or build and install using Docker:
 
