@@ -28,7 +28,7 @@ def package(
     model_store: str = typer.Option(..., "--model-store"),
     model_name: str = typer.Option(..., "--model-name"),
     torchserve_handler_path: str = typer.Option(..., "--handler"),
-    model_config: str = typer.Option("./encoder_config.json", "--model-config"),
+    model_config: str = typer.Option(..., "--model-config"),
     version: str = typer.Option("1.0", "--version", help="Model's version"),
 ):
     model_store = os.path.abspath(model_store)
