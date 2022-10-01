@@ -24,10 +24,17 @@ class TripletLoss(BaseLoss):
         return self._margin
 
     def __call__(
-        self, anchors: torch.Tensor, positives: torch.Tensor, negatives: torch.Tensor
+        self,
+        anchors: torch.Tensor,
+        examples: torch.Tensor,
+        num_positives: Optional[int] = None,
     ):
-        positive_distance_values = self._distance_metric(anchors, positives)
-        negative_distance_values = self._distance_metric(anchors, negatives)
+        positive_distance_values = self._distance_metric(
+            anchors, examples[:num_positives]
+        )
+        negative_distance_values = self._distance_metric(
+            anchors, examples[num_positives:]
+        )
 
         loss_values = torch.relu(
             positive_distance_values - negative_distance_values + self._margin

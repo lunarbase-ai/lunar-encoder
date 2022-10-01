@@ -3,10 +3,9 @@ import logging
 import os
 import shutil
 from abc import ABC, abstractmethod
-from typing import Optional, Dict, Union, Iterable
+from typing import Optional, Dict, Union, Iterable, List
 import numpy as np
 from torch import nn, Tensor
-from torch.utils.data import DataLoader
 
 from lunar_encoder.models.config import EncoderConfig
 from lunar_encoder.utils import setup_logger
@@ -80,7 +79,13 @@ class BaseEncoder(ABC, nn.Module):
         pass
 
     @abstractmethod
-    def fit(self, data_loader: DataLoader, batch_size: int = 32, num_epochs: int = 1):
+    def fit(
+        self,
+        data_loader: List[List[str]],
+        batch_size: int = 32,
+        num_epochs: int = 1,
+        save_dir: Optional[str] = None
+    ):
         pass
 
     @abstractmethod

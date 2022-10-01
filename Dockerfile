@@ -1,5 +1,4 @@
 # syntax=docker/dockerfile:1
-#FROM python:3.8-slim AS python
 FROM nvidia/cuda:11.0.3-base-ubuntu18.04
 
 # Install Python 3.9
@@ -44,8 +43,9 @@ ARG HANDLER="./lunar_encoder/server/handlers/passage_encoder_handler.py"
 ARG TORCH_SERVE_CONFIG="./resources/configs/torchserve.properties"
 ARG ENCODER_CONFIG="./resources/configs/passage_encoder.json"
 
-ENV NVIDIA_VISIBLE_DEVICES all
-ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
+# This is to make GPU visible in the container - more external config is needed though.
+#ENV NVIDIA_VISIBLE_DEVICES all
+#ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
 
 ENV MODEL_STORE ${MODEL_STORE}
 ENV MODEL_NAME ${MODEL_NAME}
@@ -74,4 +74,4 @@ RUN python3.9 -m pip install --user --upgrade pip && \
 RUN python3.9 setup.py install --user
 RUN lunar-encoder package --model-store ${MODEL_STORE} --model-name ${MODEL_NAME} --handler ${HANDLER} --model-config ${ENCODER_CONFIG}
 
-CMD lunar-encoder deploy --model-store ${MODEL_STORE} --model-name ${MODEL_NAME} --config-file ${TORCH_SERVE_CONFIG}
+CMD lunar-encoder deploy --model-store ${MODEL_STORE} --model-name ${MODEL_NAME} --config-file ${TORCH_SERVE_CONFIG} --background

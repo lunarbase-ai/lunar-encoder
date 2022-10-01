@@ -33,9 +33,11 @@ def package(
 ):
     model_store = os.path.abspath(model_store)
     if not os.path.isdir(model_store):
-        logger.info(f"{model_store} does not exist. Packaging default model.")
+        logger.info(f"{model_store} does not exist. Packaging new model.")
         if os.path.isfile(os.path.abspath(model_config)):
-            logger.info(f"Readding model configuration from {os.path.abspath(model_config)}")
+            logger.info(
+                f"Reading model configuration from {os.path.abspath(model_config)}"
+            )
             encoder = PassageEncoder(config=os.path.abspath(model_config))
         else:
             encoder = PassageEncoder(config=EncoderConfig())
@@ -72,8 +74,8 @@ def deploy(
     model_mar: str = typer.Option(None, "--model-mar"),
     config_file: str = typer.Option(None, "--config-file"),
     snapshots: bool = typer.Option(False, "--snapshots"),
-    foreground: bool = typer.Option(
-        True, "--foreground", help="Run server in foreground"
+    background: bool = typer.Option(
+        False, "--background", help="Run server in background"
     ),
 ):
     model_store = os.path.abspath(model_store)
@@ -97,8 +99,8 @@ def deploy(
         args.extend(["--ts-config", os.path.abspath(config_file)])
     if not snapshots:
         args.extend(["--ncs"])
-    if foreground:
-        args.extend(["--foreground"])
+    if not background:
+        args.extend(["--background"])
 
     subprocess.run([torchserve] + args)
 

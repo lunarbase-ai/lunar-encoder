@@ -1,23 +1,23 @@
 import dataclasses
+import datetime
 import json
 import logging
 import math
 import os
-import datetime
 from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
+from lunar_encoder.models.losses.base_loss import DistanceMetric
 from packaging import version
 from torch import Tensor, nn
 from torch.cuda.amp import GradScaler
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
-from tqdm.autonotebook import trange
-from tqdm.notebook import tqdm
+from tqdm import tqdm, trange
 
 from lunar_encoder.models.base_encoder import BaseEncoder
-from lunar_encoder.models.config import EncoderConfig, ConfigSerializationEncoder
+from lunar_encoder.models.config import ConfigSerializationEncoder, EncoderConfig
 from lunar_encoder.models.lunar_typing.enums import Loss, Optimizer, Scheduler
 from lunar_encoder.models.lunar_typing.passage_trainer import PassageTrainer
 from lunar_encoder.models.modules.dense import Dense
@@ -36,6 +36,9 @@ if version.parse(torch.__version__) >= version.parse("1.10"):
     NATIVE_CPU_AMP = True
 
 
+# TODO: External trainer object
+
+
 class PassageEncoder(BaseEncoder):
     def __init__(
         self,
@@ -45,7 +48,7 @@ class PassageEncoder(BaseEncoder):
     ):
         super(PassageEncoder, self).__init__(config)
 
-        self._trainer = PassageTrainer()
+        self._trainer = None  # Until fit runs
 
         self._transformer = Transformer(
             model_name_or_path=self._config.base_transformer_name,
@@ -104,6 +107,13 @@ class PassageEncoder(BaseEncoder):
 
     def get_word_embedding_dimension(self) -> int:
         return self._transformer.get_word_embedding_dimension()
+
+    def get_output_dimension(self) -> int:
+        return (
+            self._dense.output_dim
+            if self._dense is not None
+            else self.get_word_embedding_dimension()
+        )
 
     def forward(self, features: Dict[str, Tensor], min_out: bool = True):
         """
@@ -190,7 +200,7 @@ class PassageEncoder(BaseEncoder):
             else:
                 if self.config.device == "cpu" and amp:
                     self.logger.warning(
-                        "Tried to use `fp16` but it is not supported on cpu with current PyTorch version."
+                        "Tried to use `AMP` but it is not supported on cpu with current PyTorch version."
                     )
                     with torch.no_grad():
                         out_features = self.forward(features)
@@ -216,7 +226,7 @@ class PassageEncoder(BaseEncoder):
             all_embeddings.extend(embeddings)
 
         all_embeddings = [all_embeddings[idx] for idx in np.argsort(length_sorted_idx)]
-        all_embeddings = torch.stack(all_embeddings)
+        all_embeddings = torch.stack(all_embeddings).half()
 
         if not as_tensor:
             all_embeddings = all_embeddings.cpu().numpy()
@@ -231,8 +241,24 @@ class PassageEncoder(BaseEncoder):
 
     def init_trainer(self):
         # Instantiate loss
+        self._trainer = PassageTrainer()
+
         if isinstance(self._config.loss, str):
             self._config.loss = Loss[self._config.loss.upper()]
+
+        if isinstance(self._config.distance_metric, str):
+            self._config.distance_metric = DistanceMetric[
+                self._config.distance_metric.upper()
+            ]
+
+        if (
+            self._config.loss != Loss.PNLL
+            and self._config.distance_metric == DistanceMetric.DOT
+        ):
+            raise ValueError(
+                "DOT product as a distance metric is currently not supported for contrastive or triplet learning!"
+                "Please use another metric, e.g., COSINE."
+            )
         self._config.loss_args.update({"distance_metric": self._config.distance_metric})
         self._trainer.loss = self._config.loss(**self._config.loss_args)
 
@@ -246,7 +272,7 @@ class PassageEncoder(BaseEncoder):
                 "params": [
                     p for n, p in self.named_parameters() if n in decay_parameters
                 ],
-                "weight_decay": self._config.default_weight_decay,
+                "weight_decay": self._config.optimizer_args.get("weight_decay", 0.0),
             },
             {
                 "params": [
@@ -274,7 +300,51 @@ class PassageEncoder(BaseEncoder):
         if self._config.amp and self.config.device != "cpu":
             self._trainer.scaler = GradScaler()
 
-    def training_step(self, batch_data: Dict[str, torch.Tensor], num_examples: int):
+    def collate_tokenize(self, text_batch: List[Tuple[List[str], Optional[int]]]):
+        """
+        <([anchor, positive|negative], label)> or
+        <([anchor, positive], )> or
+        <([anchor, positive, negative], )> - these will repeat the anchor.
+            A more efficient option would be to create a separate collation function for triplets.
+        """
+
+        with_labels = len(text_batch[0]) == 2
+        if not with_labels:
+            batch_len = len(text_batch)
+            for i in range(batch_len):
+                if len(text_batch[i][0]) == 2:
+                    text_batch[i] = (text_batch[i][0], 1)
+                elif len(text_batch[i][0]) == 3:
+                    a, p, n = text_batch[i][0]
+                    text_batch[i] = ([a, p], 1)
+                    text_batch.append(([a, n], 0))
+
+        anchors, examples = [], []
+        anchors += [example[0][0] for example in text_batch if example[1] == 1]
+        examples += [example[0][1] for example in text_batch if example[1] == 1]
+
+        assert len(anchors) == len(
+            examples
+        ), "Encountered different numbers of positive anchors and positive examples:".format(
+            len(anchors), len(examples)
+        )
+        num_positives = len(examples)
+
+        anchors += [example[0][0] for example in text_batch if example[1] == 0]
+        examples += [example[0][1] for example in text_batch if example[1] == 0]
+
+        assert len(anchors) == len(
+            examples
+        ), "Encountered different numbers of anchors and examples:".format(
+            len(anchors), len(examples)
+        )
+
+        tokenized = self._transformer.tokenize(anchors + examples)
+        tokenized = dict_batch_to_device(tokenized, self.config.device)
+
+        return tokenized, num_positives
+
+    def training_step(self, batch_data: Dict[str, torch.Tensor], num_positives: int):
         if NATIVE_CPU_AMP:
             with torch.autocast(
                 device_type=str(self.config.device),
@@ -283,9 +353,15 @@ class PassageEncoder(BaseEncoder):
             ):
                 with torch.set_grad_enabled(True):
                     packed_features = self(batch_data)
-                    unpacked_features = unpack_batch(packed_features, num_examples)
+                    unpacked_features = unpack_batch(packed_features, 2)
+                    anchors, examples = unpacked_features[
+                        self.config.pooled_embedding_name
+                    ]
+
                     loss_values = self._trainer.loss(
-                        *unpacked_features[self.config.pooled_embedding_name]
+                        anchors=anchors,
+                        examples=examples,
+                        num_positives=num_positives,
                     )
         else:
             if self.config.device == "cpu" and self.config.amp:
@@ -298,9 +374,15 @@ class PassageEncoder(BaseEncoder):
                 ):
                     with torch.set_grad_enabled(True):
                         packed_features = self(batch_data)
-                        unpacked_features = unpack_batch(packed_features, num_examples)
+                        unpacked_features = unpack_batch(packed_features, 2)
+                        anchors, examples = unpacked_features[
+                            self.config.pooled_embedding_name
+                        ]
+
                         loss_values = self._trainer.loss(
-                            *unpacked_features[self.config.pooled_embedding_name]
+                            anchors=anchors,
+                            examples=examples,
+                            num_positives=num_positives,
                         )
 
         if self._config.grad_accumulation > 1:
@@ -314,8 +396,8 @@ class PassageEncoder(BaseEncoder):
     def training_epoch(
         self,
         epoch_iterator: DataLoader,
-        num_steps: int,
-        num_examples: int,
+        epoch_id: int,
+        num_steps: Optional[int] = None,
         eval_iterator: Optional[DataLoader] = None,
         eval_callback: Optional[callable] = None,
     ):
@@ -324,15 +406,16 @@ class PassageEncoder(BaseEncoder):
         epoch_losses = []
         reference_eval_metric = None
         training_step_id = 0
-        for batch_data in tqdm(
+        for batch_data, num_positives in tqdm(
             epoch_iterator,
-            desc=f"\tIteration {training_step_id} ",
+            desc=f"\tIteration {epoch_id} ",
             smoothing=0.05,
             # disable=self.logger.getEffectiveLevel() != logging.DEBUG,
             disable=False,
         ):
             loss_values = self.training_step(
-                batch_data=batch_data, num_examples=num_examples
+                batch_data=batch_data,
+                num_positives=num_positives,
             )
 
             # if loss is nan or inf simply add the average of previous logged losses
@@ -408,26 +491,29 @@ class PassageEncoder(BaseEncoder):
 
         return epoch_losses
 
-    def collate_tokenize(self, text_batch: List[List[str]]):
-        num_texts = len(text_batch[0])
-        texts = []
-        for idx in range(num_texts):
-            for example in text_batch:
-                texts.append(example[idx])
-
-        tokenized = self._transformer.tokenize(texts)
-        tokenized = dict_batch_to_device(tokenized, self.config.device)
-        return tokenized
-
     def fit(
         self,
-        training_dataset: List[List[str]],
+        training_dataset: List[Tuple[List[str], Optional[int]]],
         batch_size: int = 32,
         num_epochs: int = 1,
+        save_dir: Optional[str] = None,
     ):
         """
         The training data is expected to come in as a collection of pairs or triplets.
         """
+
+        if not all(
+            [
+                isinstance(training_instance, tuple)
+                for training_instance in training_dataset
+            ]
+        ):
+            raise ValueError(
+                "Each training instance should be a tuple of the form <([anchor, positive|negative], label)> or "
+                "<([anchor, positive], )> or "
+                "<([anchor, positive, negative], )>"
+            )
+
         self.init_trainer()
 
         dataloader = DataLoader(
@@ -437,20 +523,20 @@ class PassageEncoder(BaseEncoder):
             collate_fn=self.collate_tokenize,
         )
         num_steps = math.ceil(len(training_dataset) / batch_size)
-        num_examples = len(training_dataset[0])
         loss_log = dict()
         for e in range(num_epochs):
             epoch_losses = self.training_epoch(
-                dataloader, num_steps=num_steps, num_examples=num_examples
+                dataloader, epoch_id=e + 1, num_steps=num_steps
             )
-            loss_log[e] = epoch_losses
+            loss_log[e] = np.array(epoch_losses).mean()
 
-        self.save(os.path.join(self.config.cache_folder, str(datetime.date.today())))
+        if save_dir is None:
+            save_dir = f"{self.config.base_transformer_name.replace('/', '_')}_{str(datetime.datetime.now()).replace(' ', '_')}"
+        self.save(os.path.join(self.config.cache_folder, save_dir))
 
         return loss_log
 
     def save(self, model_path: str):
-
         if model_path is None:
             return
 
@@ -460,7 +546,7 @@ class PassageEncoder(BaseEncoder):
         self.logger.info("Saving model to {}".format(model_path))
         self._config.base_transformer_name = model_path
 
-        with open(os.path.join(model_path, "passage_encoder_config.json"), "w") as fOut:
+        with open(os.path.join(model_path, "encoder_config.json"), "w") as fOut:
             json.dump(
                 dataclasses.asdict(self._config),
                 fOut,
@@ -471,12 +557,12 @@ class PassageEncoder(BaseEncoder):
         self._transformer.save(model_path)
         save_module(
             self._pooler,
-            os.path.join(model_path, "passage_encoder_pooler.pt"),
+            os.path.join(model_path, "pooler.pt"),
         )
         if self._dense is not None:
             save_module(
                 self._dense,
-                os.path.join(model_path, "passage_encoder_dense.pt"),
+                os.path.join(model_path, "dense.pt"),
             )
 
     @staticmethod
@@ -485,13 +571,13 @@ class PassageEncoder(BaseEncoder):
         if not os.path.isdir(model_path):
             raise FileNotFoundError("{}: no such directory!".format(model_path))
 
-        pooler = load_module(os.path.join(model_path, "passage_encoder_pooler.pt"))
+        pooler = load_module(os.path.join(model_path, "pooler.pt"))
         dense = None
-        if os.path.isfile(os.path.join(model_path, "passage_encoder_dense.pt")):
-            dense = load_module(os.path.join(model_path, "passage_encoder_dense.pt"))
+        if os.path.isfile(os.path.join(model_path, "dense.pt")):
+            dense = load_module(os.path.join(model_path, "dense.pt"))
 
         config = PassageEncoder.load_json_config(
-            os.path.join(model_path, "passage_encoder_config.json")
+            os.path.join(model_path, "encoder_config.json")
         )
         config.cache_folder = model_path
         return PassageEncoder(

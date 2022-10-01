@@ -72,10 +72,9 @@ def dict_batch_to_device(batch: Dict, target_device: str):
 def pack_batch(unpacked_batch: List[Dict[str, torch.Tensor]]):
     """
     Each batch dict needs to have the same keys as the anchor.
-    **NOT USED**
     """
     packed_batch = {
-        k: torch.stack([component[k] for component in unpacked_batch])
+        k: torch.cat([component[k] for component in unpacked_batch], 0)
         for k in unpacked_batch[0].keys()
     }
     return packed_batch

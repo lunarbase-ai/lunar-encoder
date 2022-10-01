@@ -4,7 +4,13 @@ Inspired by https://github.com/UKPLab/sentence-transformers/blob/master/sentence
 from typing import Dict, List, Optional, Union, Tuple
 
 from torch import Tensor, nn
-from transformers import AutoConfig, AutoModel, AutoTokenizer, T5Config
+from transformers import (
+    AutoConfig,
+    AutoModel,
+    AutoTokenizer,
+    T5Config,
+    PreTrainedTokenizer,
+)
 
 
 class Transformer(nn.Module):
@@ -155,6 +161,10 @@ class Transformer(nn.Module):
     @property
     def tokenizer(self):
         return self._tokenizer
+
+    @tokenizer.setter
+    def tokenizer(self, new_tokenizer: PreTrainedTokenizer):
+        self._tokenizer = new_tokenizer
 
     @property
     def max_seq_length(self):

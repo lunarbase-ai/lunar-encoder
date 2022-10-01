@@ -18,7 +18,12 @@ class PNLLLoss(BaseLoss):
     def distance_metric(self):
         return self._distance_metric
 
-    def __call__(self, anchors: torch.Tensor, examples: torch.Tensor):
+    def __call__(
+        self,
+        anchors: torch.Tensor,
+        examples: torch.Tensor,
+        num_positives: Optional[int] = None,
+    ):
         """
         Inspired by
         https://github.com/UKPLab/sentence-transformers/blob/master/sentence_transformers/evaluation/EmbeddingSimilarityEvaluator.py

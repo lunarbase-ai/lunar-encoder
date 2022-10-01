@@ -32,6 +32,10 @@ class Dense(nn.Module):
         self._dense = nn.Sequential(*seq)
 
     @property
+    def output_dim(self):
+        return self._output_dim
+
+    @property
     def pooled_embedding_name(self):
         return self._pooled_embedding_name
 

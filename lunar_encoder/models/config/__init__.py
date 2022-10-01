@@ -1,9 +1,14 @@
 import json
 from dataclasses import dataclass, field
-from typing import List, Dict, Optional, Union, Any
+from typing import Any, Dict, List, Optional, Union
 
 from lunar_encoder.models.losses.base_loss import DistanceMetric
-from lunar_encoder.models.lunar_typing.enums import Loss, Scheduler, Optimizer, Activation
+from lunar_encoder.models.lunar_typing.enums import (
+    Activation,
+    Loss,
+    Optimizer,
+    Scheduler,
+)
 
 
 @dataclass
@@ -32,7 +37,6 @@ class EncoderConfig:
     optimizer: Union[str, Optimizer] = field(default=Optimizer.ADAM)
     optimizer_args: Dict = field(default_factory=dict)
     distance_metric: DistanceMetric = field(default=DistanceMetric.DOT)
-    default_weight_decay: float = field(default=0.01)
     max_grad_norm: Optional[float] = field(default=1.0)
     grad_accumulation: int = field(default=0)
     checkpoint_path: Optional[str] = field(default=None)

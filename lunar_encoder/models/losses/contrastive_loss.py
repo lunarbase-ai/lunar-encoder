@@ -25,35 +25,45 @@ class ContrastiveLoss(BaseLoss):
         return self._margin
 
     def __call__(
-        self, anchors: torch.Tensor, positives: torch.Tensor, negatives: torch.Tensor
+        self,
+        anchors: torch.Tensor,
+        examples: torch.Tensor,
+        num_positives: Optional[int] = None,
     ):
         """
-        Inspired by
-        https://github.com/UKPLab/sentence-transformers/blob/master/sentence_transformers/evaluation/EmbeddingSimilarityEvaluator.py
+
         Parameters
         ----------
         anchors
-        positives
-        negatives
+        examples
 
         Returns
         -------
 
         """
-        positive_distance_values = self._distance_metric(anchors, positives)
+
+        if num_positives is None:
+            raise ValueError("Contrastive loss requires a known number of positives.")
+
+        positive_distance_values = self._distance_metric(
+            anchors[:num_positives], examples[:num_positives]
+        )
         positive_labels = torch.ones(
-            positives.shape[0], dtype=torch.float16, device=anchors.device
+            num_positives, device=anchors.device
         )
 
-        negative_distance_values = self._distance_metric(anchors, negatives)
+        negative_distance_values = self._distance_metric(
+            anchors[num_positives:], examples[num_positives:]
+        )
         negative_labels = torch.zeros(
-            negatives.shape[0], dtype=torch.float16, device=anchors.device
+            examples.shape[0] - num_positives,
+            device=anchors.device,
         )
 
-        distance_values = torch.concat(
+        distance_values = torch.cat(
             [positive_distance_values, negative_distance_values], dim=0
         )
-        labels = torch.concat([positive_labels, negative_labels], dim=0)
+        labels = torch.cat([positive_labels, negative_labels], dim=0)
         loss_values = 0.5 * (
             labels.float() * distance_values.pow(2)
             + (1 - labels).float() * torch.relu(self._margin - distance_values).pow(2)

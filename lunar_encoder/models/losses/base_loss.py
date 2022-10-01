@@ -54,5 +54,10 @@ class BaseLoss(ABC):
         return self._reduction
 
     @abstractmethod
-    def __call__(self, *args, **kwargs):
+    def __call__(
+        self,
+        anchors: torch.Tensor,
+        examples: torch.Tensor,
+        num_positives: Optional[int] = None,
+    ):
         pass
