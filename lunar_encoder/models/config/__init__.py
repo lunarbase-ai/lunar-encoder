@@ -28,19 +28,6 @@ class EncoderConfig:
     pooled_embedding_name: str = field(default="pooled_embedding")
     pooled_attention_params: Dict = field(default_factory=dict)
     device: str = field(default="cpu")
-
-    # Training config
-    loss: Union[str, Loss] = field(default=Loss.PNLL)
-    loss_args: Dict = field(default_factory=dict)
-    scheduler: Optional[Union[str, Scheduler]] = field(default=None)
-    scheduler_args: Dict = field(default_factory=dict)
-    optimizer: Union[str, Optimizer] = field(default=Optimizer.ADAM)
-    optimizer_args: Dict = field(default_factory=dict)
-    distance_metric: DistanceMetric = field(default=DistanceMetric.DOT)
-    max_grad_norm: Optional[float] = field(default=1.0)
-    grad_accumulation: int = field(default=0)
-    checkpoint_path: Optional[str] = field(default=None)
-    checkpoint_steps: int = field(default=1000)
     num_checkpoints: int = 1
 
 

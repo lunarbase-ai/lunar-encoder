@@ -44,9 +44,6 @@ class BaseEncoder(ABC, nn.Module):
         self, current_step: Union[int, str], checkpoint_path: Optional[str] = None
     ):
 
-        if checkpoint_path is None:
-            checkpoint_path = self.config.checkpoint_path
-
         # Store new checkpoint
         self.save(os.path.join(checkpoint_path, str(current_step)))
 
@@ -82,9 +79,7 @@ class BaseEncoder(ABC, nn.Module):
     def fit(
         self,
         data_loader: List[List[str]],
-        batch_size: int = 32,
-        num_epochs: int = 1,
-        save_dir: Optional[str] = None
+        fit_config: Optional[Dict] = None,
     ):
         pass
 

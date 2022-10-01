@@ -8,7 +8,6 @@ from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
-from lunar_encoder.models.losses.base_loss import DistanceMetric
 from packaging import version
 from torch import Tensor, nn
 from torch.cuda.amp import GradScaler
@@ -18,7 +17,6 @@ from tqdm import tqdm, trange
 
 from lunar_encoder.models.base_encoder import BaseEncoder
 from lunar_encoder.models.config import ConfigSerializationEncoder, EncoderConfig
-from lunar_encoder.models.lunar_typing.enums import Loss, Optimizer, Scheduler
 from lunar_encoder.models.lunar_typing.passage_trainer import PassageTrainer
 from lunar_encoder.models.modules.dense import Dense
 from lunar_encoder.models.modules.pooling import Pooling
@@ -34,9 +32,6 @@ from lunar_encoder.utils import (
 NATIVE_CPU_AMP = False
 if version.parse(torch.__version__) >= version.parse("1.10"):
     NATIVE_CPU_AMP = True
-
-
-# TODO: External trainer object
 
 
 class PassageEncoder(BaseEncoder):
@@ -239,32 +234,13 @@ class PassageEncoder(BaseEncoder):
     def tokenize(self, texts: Union[List[str], List[Dict], List[Tuple[str, str]]]):
         return self._transformer.tokenize(texts)
 
-    def init_trainer(self):
-        # Instantiate loss
-        self._trainer = PassageTrainer()
-
-        if isinstance(self._config.loss, str):
-            self._config.loss = Loss[self._config.loss.upper()]
-
-        if isinstance(self._config.distance_metric, str):
-            self._config.distance_metric = DistanceMetric[
-                self._config.distance_metric.upper()
-            ]
-
-        if (
-            self._config.loss != Loss.PNLL
-            and self._config.distance_metric == DistanceMetric.DOT
-        ):
-            raise ValueError(
-                "DOT product as a distance metric is currently not supported for contrastive or triplet learning!"
-                "Please use another metric, e.g., COSINE."
-            )
-        self._config.loss_args.update({"distance_metric": self._config.distance_metric})
-        self._trainer.loss = self._config.loss(**self._config.loss_args)
+    def init_trainer(self, trainer_config: Optional[Dict] = None):
+        if trainer_config is None:
+            self._trainer = PassageTrainer()
+        else:
+            self._trainer = PassageTrainer(**trainer_config)
 
         # Instantiate optimizer
-        if isinstance(self._config.optimizer, str):
-            self._config.optimizer = Optimizer[self._config.optimizer.upper()]
         decay_parameters = get_parameter_names(self, [nn.LayerNorm])
         decay_parameters = [name for name in decay_parameters if "bias" not in name]
         optimizer_grouped_parameters = [
@@ -272,7 +248,7 @@ class PassageEncoder(BaseEncoder):
                 "params": [
                     p for n, p in self.named_parameters() if n in decay_parameters
                 ],
-                "weight_decay": self._config.optimizer_args.get("weight_decay", 0.0),
+                "weight_decay": self._trainer.optimizer_args.get("weight_decay", 0.0),
             },
             {
                 "params": [
@@ -281,23 +257,18 @@ class PassageEncoder(BaseEncoder):
                 "weight_decay": 0.0,
             },
         ]
-        self._trainer.optimizer = self._config.optimizer(
-            optimizer_grouped_parameters, **self._config.optimizer_args
+        self._trainer.optimizer = self._trainer.optimizer(
+            optimizer_grouped_parameters, **self._trainer.optimizer_args
         )
 
         # Instantiate scheduler
-        if self._config.scheduler is None:
-            self._trainer.scheduler = None
-        else:
-            if isinstance(self._config.scheduler, str):
-                self._config.scheduler = Scheduler[self._config.scheduler.upper()]
-            self._trainer.scheduler = self._config.scheduler(
-                self._trainer.optimizer, **self._config.scheduler_args
-            )
 
         # Instantiate scaler
-        self._trainer.scaler = None
-        if self._config.amp and self.config.device != "cpu":
+        if (
+            self._trainer.scaler is None
+            and self._config.amp
+            and self.config.device != "cpu"
+        ):
             self._trainer.scaler = GradScaler()
 
     def collate_tokenize(self, text_batch: List[Tuple[List[str], Optional[int]]]):
@@ -385,8 +356,8 @@ class PassageEncoder(BaseEncoder):
                             num_positives=num_positives,
                         )
 
-        if self._config.grad_accumulation > 1:
-            loss_values = loss_values / self._config.grad_accumulation
+        if self._trainer.grad_accumulation > 1:
+            loss_values = loss_values / self._trainer.grad_accumulation
         if self._trainer.scaler is None:
             loss_values.backward()
         else:
@@ -434,19 +405,19 @@ class PassageEncoder(BaseEncoder):
                 epoch_losses.append(loss_values.item())
 
             if (
-                self._config.grad_accumulation <= 1
-                or (training_step_id + 1) % self._config.grad_accumulation == 0
+                self._trainer.grad_accumulation <= 1
+                or (training_step_id + 1) % self._trainer.grad_accumulation == 0
                 or (
-                    self._config.grad_accumulation
+                    self._trainer.grad_accumulation
                     >= num_steps
                     == (training_step_id + 1)
                 )
             ):
                 if self._trainer.scaler is not None:
                     self._trainer.scaler.unscale_(self._trainer.optimizer)
-                if self._config.max_grad_norm is not None:
+                if self._trainer.max_grad_norm is not None:
                     torch.nn.utils.clip_grad_norm_(
-                        self.parameters(), self._config.max_grad_norm
+                        self.parameters(), self._trainer.max_grad_norm
                     )
 
                 optimizer_was_run = True
@@ -466,13 +437,13 @@ class PassageEncoder(BaseEncoder):
             training_step_id += 1
 
             # Checkpoint
-            if training_step_id % self.config.checkpoint_steps == 0:
+            if training_step_id % self._trainer.checkpoint_steps == 0:
                 if all(
                     [
                         param is not None
                         for param in [
                             eval_callback,
-                            self.config.checkpoint_path,
+                            self._trainer.checkpoint_path,
                             eval_iterator,
                         ]
                     ]
@@ -484,19 +455,19 @@ class PassageEncoder(BaseEncoder):
                     self.train()
                     if is_better:
                         self._save_checkpoint(
-                            training_step_id, self.config.checkpoint_path
+                            training_step_id, self._trainer.checkpoint_path
                         )
-                elif self.config.checkpoint_path is not None:
-                    self._save_checkpoint(training_step_id, self.config.checkpoint_path)
+                elif self._trainer.checkpoint_path is not None:
+                    self._save_checkpoint(
+                        training_step_id, self._trainer.checkpoint_path
+                    )
 
         return epoch_losses
 
     def fit(
         self,
         training_dataset: List[Tuple[List[str], Optional[int]]],
-        batch_size: int = 32,
-        num_epochs: int = 1,
-        save_dir: Optional[str] = None,
+        fit_config: Optional[Dict] = None,
     ):
         """
         The training data is expected to come in as a collection of pairs or triplets.
@@ -514,25 +485,24 @@ class PassageEncoder(BaseEncoder):
                 "<([anchor, positive, negative], )>"
             )
 
-        self.init_trainer()
+        self.init_trainer(fit_config)
 
         dataloader = DataLoader(
             training_dataset,
-            batch_size=batch_size,
+            batch_size=self._trainer.batch_size,
             shuffle=True,
             collate_fn=self.collate_tokenize,
         )
-        num_steps = math.ceil(len(training_dataset) / batch_size)
+        num_steps = math.ceil(len(training_dataset) / self._trainer.batch_size)
         loss_log = dict()
-        for e in range(num_epochs):
+        for e in range(self._trainer.epochs):
             epoch_losses = self.training_epoch(
                 dataloader, epoch_id=e + 1, num_steps=num_steps
             )
             loss_log[e] = np.array(epoch_losses).mean()
 
-        if save_dir is None:
-            save_dir = f"{self.config.base_transformer_name.replace('/', '_')}_{str(datetime.datetime.now()).replace(' ', '_')}"
-        self.save(os.path.join(self.config.cache_folder, save_dir))
+        if self._trainer.checkpoint_path is None:
+            self.save(os.path.join(self.config.cache_folder, '0'))
 
         return loss_log
 

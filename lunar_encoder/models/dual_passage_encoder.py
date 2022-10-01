@@ -75,7 +75,8 @@ class DualPassageEncoder(PassageEncoder):
             self.device != self._context_encoder.device
         ):
             raise ValueError(
-                "Query and context encoders must use the same device with the same Automatic Mixed Precision configuration!"
+                "Query and context encoders must use the same device "
+                "with the same Automatic Mixed Precision configuration!"
             )
 
     def query_encode(
@@ -217,8 +218,8 @@ class DualPassageEncoder(PassageEncoder):
                             num_positives=num_positives,
                         )
 
-        if self._config.grad_accumulation > 1:
-            loss_values = loss_values / self._config.grad_accumulation
+        if self._trainer.grad_accumulation > 1:
+            loss_values = loss_values / self._trainer.grad_accumulation
         if self._trainer.scaler is None:
             loss_values.backward()
         else:
