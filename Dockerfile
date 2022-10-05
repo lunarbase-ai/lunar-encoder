@@ -1,6 +1,5 @@
 # syntax=docker/dockerfile:1
-#FROM python:3.8-slim AS python
-FROM nvidia/cuda:11.0.3-base-ubuntu18.04
+FROM ubuntu:bionic AS ubuntu
 
 # Install Python 3.9
 RUN apt-get update -y
@@ -38,11 +37,12 @@ RUN chown -R app:app /app
 
 USER app
 
-ARG MODEL_STORE="<path_to_model_store>"
-ARG MODEL_NAME="lunarenc"
+ARG MODEL_STORE
+ARG MODEL_NAME
 ARG HANDLER="./lunar_encoder/server/handlers/passage_encoder_handler.py"
 ARG TORCH_SERVE_CONFIG="./resources/configs/torchserve.properties"
 ARG ENCODER_CONFIG="./resources/configs/passage_encoder.json"
+ARG LOG_CONFIG="./resources/configs/log4j2.xml"
 
 ENV NVIDIA_VISIBLE_DEVICES all
 ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
@@ -52,12 +52,14 @@ ENV MODEL_NAME ${MODEL_NAME}
 ENV HANDLER ${HANDLER}
 ENV TORCH_SERVE_CONFIG ${TORCH_SERVE_CONFIG}
 ENV ENCODER_CONFIG ${ENCODER_CONFIG}
+ENV LOG_CONFIG ${LOG_CONFIG}
 
 RUN export MODEL_STORE
 RUN export MODEL_NAME
 RUN export HANDLER
 RUN export TORCH_SERVE_CONFIG
 RUN export ENCODER_CONFIG
+RUN export LOG_CONFIG
 
 ENV PATH="${PATH}:/app/.local/bin/"
 ENV LOG_LOCATION="/app/var/log"
@@ -68,10 +70,10 @@ RUN export LOG_LOCATION
 RUN python3.9 -m pip install --user --upgrade pip && \
     python3.9 -m pip install --user -r requirements.txt
 
-# Specific torch version - in case is needed
-# RUN python3.9 -m pip  install torch==1.9.0 --extra-index-url https://download.pytorch.org/whl/cu111
 
 RUN python3.9 setup.py install --user
+
+
 RUN lunar-encoder package --model-store ${MODEL_STORE} --model-name ${MODEL_NAME} --handler ${HANDLER} --model-config ${ENCODER_CONFIG}
 
-CMD lunar-encoder deploy --model-store ${MODEL_STORE} --model-name ${MODEL_NAME} --config-file ${TORCH_SERVE_CONFIG}
+CMD lunar-encoder deploy --model-store ${MODEL_STORE} --model-name ${MODEL_NAME} --config-file ${TORCH_SERVE_CONFIG} --log-config ${LOG_CONFIG} --foreground

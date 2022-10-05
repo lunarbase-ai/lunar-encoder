@@ -33,7 +33,7 @@ def package(
 ):
     model_store = os.path.abspath(model_store)
     if not os.path.isdir(model_store):
-        logger.info(f"{model_store} does not exist. Packaging default model.")
+        logger.info(f"{model_store} does not exist. Creating it ...")
         if os.path.isfile(os.path.abspath(model_config)):
             logger.info(f"Readding model configuration from {os.path.abspath(model_config)}")
             encoder = PassageEncoder(config=os.path.abspath(model_config))
@@ -45,6 +45,7 @@ def package(
     arch_proc = subprocess.run(
         [
             archiver,
+            "-f",
             "--model-name",
             model_name,
             "-v",
@@ -71,9 +72,10 @@ def deploy(
     model_name: str = typer.Option(..., "--model-name"),
     model_mar: str = typer.Option(None, "--model-mar"),
     config_file: str = typer.Option(None, "--config-file"),
+    log_config: str = typer.Option(None, "--log-config"),
     snapshots: bool = typer.Option(False, "--snapshots"),
     foreground: bool = typer.Option(
-        True, "--foreground", help="Run server in foreground"
+        False, "--foreground", help="Run server in foreground"
     ),
 ):
     model_store = os.path.abspath(model_store)
@@ -95,11 +97,13 @@ def deploy(
     ]
     if config_file is not None:
         args.extend(["--ts-config", os.path.abspath(config_file)])
+    if log_config is not None:
+        args.extend(["--log-config", os.path.abspath(log_config)])
     if not snapshots:
         args.extend(["--ncs"])
     if foreground:
         args.extend(["--foreground"])
-
+    logger.info(f"Running: torchserve {args}")
     subprocess.run([torchserve] + args)
 
 
