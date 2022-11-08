@@ -74,8 +74,8 @@ def deploy(
     model_mar: str = typer.Option(None, "--model-mar"),
     config_file: str = typer.Option(None, "--config-file"),
     snapshots: bool = typer.Option(False, "--snapshots"),
-    background: bool = typer.Option(
-        False, "--background", help="Run server in background"
+    foreground: bool = typer.Option(
+        False, "--foreground", help="Run server in background"
     ),
 ):
     model_store = os.path.abspath(model_store)
@@ -99,8 +99,8 @@ def deploy(
         args.extend(["--ts-config", os.path.abspath(config_file)])
     if not snapshots:
         args.extend(["--ncs"])
-    if not background:
-        args.extend(["--background"])
+    if foreground:
+        args.extend(["--foreground"])
 
     subprocess.run([torchserve] + args)
 

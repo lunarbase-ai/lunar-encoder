@@ -10,6 +10,7 @@ from lunar_encoder.models.lunar_typing.enums import (
     Scheduler,
 )
 
+# TODO: Change this to Pydantic
 
 @dataclass
 class EncoderConfig:

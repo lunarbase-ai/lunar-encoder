@@ -20,6 +20,9 @@ def raise_on_not200(response):
 
 
 class InferenceClient:
+    """
+    TODO: Update after lunar-engine's EncoderClient. Or remove altogether.
+    """
     def __init__(
         self,
         scheme: str = "http",

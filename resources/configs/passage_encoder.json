@@ -1,5 +1,5 @@
 {
-  "base_transformer_name": "sentence-transformers/all-mpnet-base-v2",
+  "base_transformer_name": "juridics/bertimbaulaw-base-portuguese-sts",
   "max_seq_length": 256,
   "cache_folder": "/tmp/.cache/lunar/",
   "pooling_method": "mean",
