@@ -16,7 +16,7 @@
 			<PatternLayout pattern="%d{ISO8601} [%-5p] %t %c - %m%n"/>
 		</Console>
 		<RollingFile
-				name="lunarenc"
+				name="lunarenc_log"
 				fileName="/var/log/torchserve/lunarenc.log"
 		        filePattern="/var/log/torchserve/lunarenc.%d{dd-MMM}.log.gz">
 			<PatternLayout pattern="%d{ISO8601} [%-5p] %t %c - %m%n"/>
@@ -65,10 +65,10 @@
 		</Logger>
 		<Logger name="io.netty" level="error" />
 		<Logger name="MODEL_LOG" level="all">
-			<AppenderRef ref="model_log"/>
+			<AppenderRef ref="lunarenc_log"/>
 		</Logger>
 		<Logger name="MODEL_METRICS" level="all">
-			<AppenderRef ref="model_metrics"/>
+			<AppenderRef ref="lunar_metrics"/>
 		</Logger>
 		<Logger name="org.apache" level="off" />
 		<Logger name="org.pytorch.serve" level="debug">
