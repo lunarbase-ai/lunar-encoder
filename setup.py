@@ -1,6 +1,7 @@
 import sys
 import os
 
+os.environ["MPLCONFIGDIR"] = "."
 from setuptools import find_packages
 from setuptools import setup
 from lunar_encoder import __version__
