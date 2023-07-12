@@ -1,9 +1,10 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional
 
-from lunar_encoder.proxy.proxy import EncoderProxy
+from lunar_encoder.encoders.huggingface import HuggingFaceEncoder
 
 app = FastAPI()
 origins = ["*"]
@@ -15,20 +16,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-proxy = EncoderProxy()
+model_name = os.getenv("MODEL_NAME")
+model_kwargs = {'device': os.getenv("DEVICE")}
+encode_kwargs = {'normalize_embeddings': os.getenv("NORMALIZE_EMBEDDINGS")}
+huggingface_encoder = HuggingFaceEncoder(
+    model_name=model_name,
+    model_kwargs=model_kwargs,
+    encode_kwargs=encode_kwargs
+)
 
 
 class EncodeInput(BaseModel):
     sentences: List[str]
-    modelName: Optional[str]
-    tokenizerName: Optional[str]
 
 
 @app.post("/encode")
 def encode(body: EncodeInput):
-
-    return proxy.encode(
-        sentences=body.sentences,
-        tokenizer_name=body.tokenizerName,
-        model_name=body.modelName,
-    )
+    return huggingface_encoder.embed_documents(body.sentences)
