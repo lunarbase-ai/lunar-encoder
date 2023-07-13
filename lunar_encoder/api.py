@@ -39,5 +39,5 @@ def encode(body: EncodeInput):
             return huggingface_encoder.embed_documents(body.sentences)
         else:
             raise HTTPException(status_code=400, detail="Invalid provider")
-    except:
+    except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
