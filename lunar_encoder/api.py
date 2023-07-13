@@ -1,4 +1,6 @@
 import os
+from http.client import HTTPException
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -32,4 +34,10 @@ class EncodeInput(BaseModel):
 
 @app.post("/encode")
 def encode(body: EncodeInput):
-    return huggingface_encoder.embed_documents(body.sentences)
+    try:
+        if os.getenv("PROVIDER") == "huggingface":
+            return huggingface_encoder.embed_documents(body.sentences)
+        else:
+            raise HTTPException(status_code=400, detail="Invalid provider")
+    except:
+        raise HTTPException(status_code=400, detail=str(e))
