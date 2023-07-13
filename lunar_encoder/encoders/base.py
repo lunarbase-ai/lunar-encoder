@@ -1,10 +1,10 @@
-"""Interface for embedding models."""
+"""Interface for encoder models."""
 from abc import ABC, abstractmethod
 from typing import List
 
 
 class Encoder(ABC):
-    """Interface for embedding models."""
+    """Interface for encoder models."""
 
     @abstractmethod
     def embed_documents(self, texts: List[str]) -> List[List[float]]:

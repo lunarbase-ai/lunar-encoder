@@ -18,19 +18,6 @@ class HuggingFaceEncoder(BaseModel, Encoder):
 
     To use, you should have the ``sentence_transformers`` python package installed.
 
-    Example:
-        .. code-block:: python
-
-            from langchain.embeddings import HuggingFaceEmbeddings
-
-            model_name = "sentence-transformers/all-mpnet-base-v2"
-            model_kwargs = {'device': 'cpu'}
-            encode_kwargs = {'normalize_embeddings': False}
-            hf = HuggingFaceEmbeddings(
-                model_name=model_name,
-                model_kwargs=model_kwargs,
-                encode_kwargs=encode_kwargs
-            )
     """
 
     client: Any  #: :meta private:
@@ -170,16 +157,3 @@ class HuggingFaceInstructEncoder(BaseModel, Encoder):
         instruction_pair = [self.query_instruction, text]
         embedding = self.client.encode([instruction_pair], **self.encode_kwargs)[0]
         return embedding.tolist()
-
-
-if __name__ == "__main__":
-    model_name = "sentence-transformers/all-mpnet-base-v2"
-    model_kwargs = {'device': 'cpu'}
-    encode_kwargs = {'normalize_embeddings': False}
-    hf = HuggingFaceEncoder(
-        model_name=model_name,
-        model_kwargs=model_kwargs,
-        encode_kwargs=encode_kwargs
-    )
-    embedding = hf.embed_query('Hello, my name is Danilo')
-    print(embedding)
