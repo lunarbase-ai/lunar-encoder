@@ -1,16 +1,10 @@
 """Wrapper around HuggingFace embedding models."""
 from typing import Any, Dict, List, Optional
+import os
 
 from pydantic import BaseModel, Extra, Field
 
 from lunar_encoder.encoders.base import Encoder
-
-DEFAULT_MODEL_NAME = "sentence-transformers/all-mpnet-base-v2"
-DEFAULT_INSTRUCT_MODEL = "hkunlp/instructor-large"
-DEFAULT_EMBED_INSTRUCTION = "Represent the document for retrieval: "
-DEFAULT_QUERY_INSTRUCTION = (
-    "Represent the question for retrieving supporting documents: "
-)
 
 
 class HuggingFaceEncoder(BaseModel, Encoder):
@@ -21,7 +15,7 @@ class HuggingFaceEncoder(BaseModel, Encoder):
     """
 
     client: Any  #: :meta private:
-    model_name: str = DEFAULT_MODEL_NAME
+    model_name: str = os.getenv("MODEL_NAME")
     """Model name to use."""
     cache_folder: Optional[str] = None
     """Path to store models. 
@@ -101,7 +95,7 @@ class HuggingFaceInstructEncoder(BaseModel, Encoder):
     """
 
     client: Any  #: :meta private:
-    model_name: str = DEFAULT_INSTRUCT_MODEL
+    model_name: str = os.getenv("DEFAULT_INSTRUCT_MODEL")
     """Model name to use."""
     cache_folder: Optional[str] = None
     """Path to store models. 
@@ -110,9 +104,9 @@ class HuggingFaceInstructEncoder(BaseModel, Encoder):
     """Key word arguments to pass to the model."""
     encode_kwargs: Dict[str, Any] = Field(default_factory=dict)
     """Key word arguments to pass when calling the `encode` method of the model."""
-    embed_instruction: str = DEFAULT_EMBED_INSTRUCTION
+    embed_instruction: str = os.getenv("DEFAULT_EMBED_INSTRUCTION")
     """Instruction to use for embedding documents."""
-    query_instruction: str = DEFAULT_QUERY_INSTRUCTION
+    query_instruction: str = os.getenv("DEFAULT_QUERY_INSTRUCTION")
     """Instruction to use for embedding query."""
 
     def __init__(self, **kwargs: Any):

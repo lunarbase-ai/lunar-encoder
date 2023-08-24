@@ -3,8 +3,8 @@ from http.client import HTTPException
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
-from typing import List, Optional
+from pydantic import BaseModel
+from typing import List
 
 from lunar_encoder.encoders.huggingface import HuggingFaceEncoder
 
@@ -35,9 +35,7 @@ class EncodeInput(BaseModel):
 @app.post("/encode")
 def encode(body: EncodeInput):
     try:
-        if os.getenv("PROVIDER") == "huggingface":
-            return huggingface_encoder.embed_documents(body.sentences)
-        else:
-            raise HTTPException(status_code=400, detail="Invalid provider")
+        assert os.getenv("PROVIDER") == "huggingface", "Invalid provider"
+        return huggingface_encoder.embed_documents(body.sentences)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
