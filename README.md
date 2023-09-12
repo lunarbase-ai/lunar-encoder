@@ -9,7 +9,7 @@ Using Lunar Encoder requires three main steps:
 
 ### 1. Installation
 
-The package requires `Python 3.7+` and `Java 8+`.
+The package requires `Python 3.7+` and `Java 11+`.
 
 For the time being we recommend to **clone this repository** and, in the project's directory, run:
 
