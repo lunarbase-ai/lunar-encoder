@@ -44,3 +44,6 @@ where:
 - TORCH_SERVE_CONFIG: a path to a `.properties` configuration file used by TorchServe. An example is given in `./resources/configs/torchserve.properties`. Make sure you configure the exemplified parameters for your system.
 
 More information about how Lunar Encoder servers pre-trained Huggingface models as a service is provided by [TorchServe's documentation](https://pytorch.org/serve/index.html).
+
+### 4. Test
+`curl -X GET "http://<IP>:<PORT>/predictions/<MODEL_NAME>" -H 'Content-Type: application/json' -d'["This is a text to encode"]'`
